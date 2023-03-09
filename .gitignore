@@ -11,6 +11,7 @@ build
 custom.cmake
 __pycache__
 .idea
+.vscode
 tools/dptools/build
 .nfs*
 _build*

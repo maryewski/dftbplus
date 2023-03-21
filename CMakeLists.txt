@@ -115,6 +115,18 @@ if(WITH_PLUMED)
   list(APPEND PKG_CONFIG_REQUIRES plumed)
 endif()
 
+# if(WITH_OPENMMPOL)
+#   set(OPENMMPOL_GIT_REPOSITORY "DUMMY VAR: no public repo available just yet")
+#   set(OPENMMPOL_GIT_TAG "DUMMY VAR: no public repo available just yet")  # do not change manually!
+#   dftbp_config_hybrid_dependency(openmmpol openmmpol::openmmpol "${HYBRID_CONFIG_METHODS}" "QUIET" external/openmmpol
+#     "${exclude}" "${OPENMMPOL_GIT_REPOSITORY}" "${OPENMMPOL_GIT_TAG}")
+# endif()
+
+if(WITH_OPENMMPOL)
+  find_package(CustomOpenmmpol REQUIRED)
+  list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+endif()
+
 find_package(CustomBlas REQUIRED)
 find_package(CustomLapack REQUIRED)
 list(APPEND PKG_CONFIG_LIBS_PRIVATE ${BLAS_LIBRARY} ${LAPACK_LIBRARY})

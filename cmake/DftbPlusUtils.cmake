@@ -70,6 +70,10 @@ function (dftbp_add_fypp_defines fyppflags)
     list(APPEND _fyppflags -DWITH_MBD)
   endif()
 
+  if(WITH_OPENMMPOL)
+    list(APPEND _fyppflags -DWITH_OPENMMPOL)
+  endif()
+
   if(WITH_PLUMED)
     list(APPEND _fyppflags -DWITH_PLUMED)
   endif()
@@ -116,6 +120,10 @@ function (dftbp_add_fypp_defines fyppflags)
 
   if(WITH_TBLITE)
     list(APPEND _fyppflags -DWITH_TBLITE)
+  endif()
+
+  if(WITH_OPENMMPOL)
+    list(APPEND _fyppflags -DWITH_OPENMMPOL)
   endif()
 
   if(WITH_C_EXECUTABLES)

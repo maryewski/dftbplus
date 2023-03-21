@@ -131,6 +131,10 @@ if(WITH_CHIMES)
   target_link_libraries(dftbplus PUBLIC ChimesCalc::ChimesCalc_Fortran)
 endif()
 
+if(WITH_OPENMMPOL)
+  target_link_libraries(dftbplus PRIVATE Openmmpol::Openmmpol)
+endif()
+
 if(WITH_MPI)
   target_link_libraries(dftbplus PRIVATE MPI::MPI_Fortran)
   target_link_libraries(dftbplus PUBLIC MpiFx::MpiFx ScalapackFx::ScalapackFx)

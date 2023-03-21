@@ -73,6 +73,7 @@ module dftbp_dftbplus_initprogram
   use dftbp_elecsolvers_elsisolver, only : TElsiSolver_init, TElsiSolver_final
   use dftbp_extlibs_arpack, only : withArpack
   use dftbp_extlibs_elsiiface, only : withELSI
+  use dftbp_extlibs_openmmpol
   use dftbp_extlibs_plumed, only : withPlumed, TPlumedCalc, TPlumedCalc_init
   use dftbp_extlibs_poisson, only : TPoissonInput
   use dftbp_extlibs_sdftd3, only : TSDFTD3, TSDFTD3_init, writeSDFTD3Info

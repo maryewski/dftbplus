@@ -91,6 +91,10 @@ else()
 
   find_package_handle_standard_args(CustomOpenmmpol REQUIRED_VARS OPENMMPOL_LIBRARY)
 
+  # find_library(CUSTOM_OPENMMPOL NAMES libopenmmpol.so HINTS ${OPENMMPOL_LIBRARY_DIR}) 
+  # add_library(Openmmpol::Openmmpol INTERFACE IMPORTED)
+  # set_target_properties(Openmmpol::Openmmpol PROPERTIES IMPORTED_LOCATION ${CUSTOM_OPENMMPOL})
+
   set(OPENMMPOL_FOUND ${CUSTOMOPENMMPOL_FOUND})
   set(Openmmpol_FOUND ${CUSTOMOPENMMPOL_FOUND})
 

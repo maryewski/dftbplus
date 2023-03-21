@@ -1443,6 +1443,7 @@ contains
     end select
 
     call parseChimes(node, ctrl%chimesRepInput)
+    call parseOpenmmpol(node, ctrl%openmmpolInput)
 
     ! SCC
     call getChildValue(node, "SCC", ctrl%tSCC, .false.)
@@ -7965,6 +7966,38 @@ contains
     #:endif
 
   end subroutine parseChimes
+
+  subroutine parseOpenmmpol(rootNode, openmmpolInput)
+    use dftbp_extlibs_openmmpol, only : TOMMPInput
+    
+    type(fnode), pointer, intent(in) :: rootNode
+    type(TOMMPInput), allocatable, intent(out) :: openmmpolInput
+
+    type(fnode), pointer :: openmmpolNode
+    type(string) :: buffer
+
+  #:if WITH_OPENMMPOL
+    type(string), allocatable :: searchPath(:)
+  #:endif
+
+    character(len=:), allocatable :: openmmpolInputFile
+
+    call getChild(rootNode, "Openmmpol", openmmpolNode, requested=.false.)
+    if (.not. associated(openmmpolNode)) return
+    #:if WITH_OPENMMPOL
+      allocate(openmmpolInput)
+      call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.dat")
+      openmmpolInputFile = unquote(char(buffer))
+      call getParamSearchPath(searchPath)
+      call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
+      if (.not. allocated(openmmpolInput%filename)) then
+        call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
+      end if
+    #:else
+      call detailedError(openmmpolNode, "openmmpol calculation requsted, but DFTB+ was not with openmmpol support.")
+    #:endif
+
+  end subroutine parseOpenmmpol
 
 
   !> Returns parser version for a given input version or throws an error if not possible.

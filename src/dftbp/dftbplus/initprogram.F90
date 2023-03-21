@@ -73,7 +73,7 @@ module dftbp_dftbplus_initprogram
   use dftbp_elecsolvers_elsisolver, only : TElsiSolver_init, TElsiSolver_final
   use dftbp_extlibs_arpack, only : withArpack
   use dftbp_extlibs_elsiiface, only : withELSI
-  use dftbp_extlibs_openmmpol
+  use dftbp_extlibs_openmmpol, only: TOMMPInterface, TOMMPInterface_init, TOMMPInput
   use dftbp_extlibs_plumed, only : withPlumed, TPlumedCalc, TPlumedCalc_init
   use dftbp_extlibs_poisson, only : TPoissonInput
   use dftbp_extlibs_sdftd3, only : TSDFTD3, TSDFTD3_init, writeSDFTD3Info
@@ -846,6 +846,9 @@ module dftbp_dftbplus_initprogram
     !> Plumed calculator
     type(TPlumedCalc), allocatable :: plumedCalc
 
+    !> Openmmpol calculator
+    type(TOMMPInterface), allocatable :: openmmpolCalc
+
     !> Dense matrix descriptor for H and S
     type(TDenseDescr), allocatable :: denseDesc
 
@@ -1565,6 +1568,13 @@ contains
         & nIndepHam, this%tempElec)
     call getBufferedCholesky_(this%tRealHS, this%parallelKS%nLocalKS, nBufferedCholesky)
     call TElectronicSolver_init(this%electronicSolver, input%ctrl%solver%iSolver, nBufferedCholesky)
+
+    ! Initialize openmmpol calculator, if necessary
+    if (allocated(input%ctrl%openmmpolInput)) then
+      allocate(this%openmmpolCalc)
+      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput)
+      ! write(*, *) "OPENMMPOL INITIALIZED"
+    end if
 
   #:if WITH_TRANSPORT
     this%tTunn = input%ginfo%tundos%defined

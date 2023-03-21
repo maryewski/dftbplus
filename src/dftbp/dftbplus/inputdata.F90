@@ -28,6 +28,7 @@ module dftbp_dftbplus_inputdata
   use dftbp_extlibs_tblite, only : TTBLiteInput
   use dftbp_io_message, only : error, warning
   use dftbp_md_xlbomd, only : TXLBOMDInp
+  use dftbp_extlibs_openmmpol, only : TOMMPInput
   use dftbp_reks_reks, only : TReksInp
   use dftbp_solvation_cm5, only : TCM5Input
   use dftbp_solvation_solvinput, only : TSolvationInp
@@ -550,6 +551,9 @@ module dftbp_dftbplus_inputdata
 
     !> Whether ChIMES correction for repulsives should be applied.
     type(TChimesRepInp), allocatable :: chimesRepInput
+
+    !> Whether openmmpol calculation is requested
+    type(TOMMPInput), allocatable :: openmmpolInput
 
     !> File access type to use when opening files for reading and writing
     character(20) :: fileAccessTypes(2)

@@ -18,12 +18,16 @@ module dftbp_extlibs_openmmpol
 
 #:if WITH_OPENMMPOL
     type :: TOMMPInterface
-        type(ommp_system), pointer :: TOMMPSystem
+        type(ommp_system), pointer :: pSystem
     end type
 #:else
     type :: TOMMPInterface
     end type
 #:endif
+
+type :: TOMMPInput
+    character(:), allocatable :: filename
+end type
 
 public TOMMPInterface, TOMMPInterface_init
 
@@ -31,8 +35,12 @@ contains
 
 ! SECTION: subroutines
 #:if WITH_OPENMMPOL
-        subroutine TOMMPInterface_init(this)
-            type(TOMMPInterface), intent(inout) :: this
+        subroutine TOMMPInterface_init(this, openmmpolInput)
+            type(TOMMPInterface), intent(out) :: this
+            type(TOMMPInput) :: openmmpolInput
+            ! character(len=*), intent(in) :: filename
+
+            call ommp_init_mmp(this%pSystem, openmmpolInput%filename)
         end subroutine
 #:else
     subroutine TOMMPInterface_init()

@@ -15,6 +15,7 @@ module dftbp_dftb_hamiltonian
   use dftbp_dftb_dispersions, only : TDispersionIface
   use dftbp_common_environment, only : TEnvironment
   use dftbp_dftb_extfields, only : TEField
+  use dftbp_extlibs_openmmpol, only : TOMMPInterface
   use dftbp_dftb_periodic, only : TNeighbourList
   use dftbp_dftb_potentials, only : TPotentials
   use dftbp_dftb_scc, only : TScc
@@ -146,7 +147,7 @@ contains
   !> spin, and where relevant dispersion
   subroutine addChargePotentials(env, sccCalc, tblite, updateScc, qInput, q0, chargePerShell,&
       & orb, multipole, species, neighbourList, img2CentCell, spinW, solvation, thirdOrd,&
-      & dispersion, potential)
+      & dispersion, openmmpolCalc, potential)
 
     !> Environment settings
     type(TEnvironment), intent(inout) :: env
@@ -189,6 +190,9 @@ contains
 
     !> Solvation mode
     class(TSolvation), allocatable, intent(inout) :: solvation
+
+    !> Openmmpol instance
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
 
     !> third order SCC interactions
     type(TThirdOrder), allocatable, intent(inout) :: thirdOrd
@@ -240,6 +244,11 @@ contains
     if (allocated(dispersion)) then
       call dispersion%updateCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
       call dispersion%addPotential(atomPot(:,1))
+    end if
+
+    if (allocated(openmmpolCalc)) then
+      call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
+      call openmmpolCalc%addPotential(atomPot(:, 1))
     end if
 
     potential%intAtom(:,1) = potential%intAtom(:,1) + atomPot(:,1)

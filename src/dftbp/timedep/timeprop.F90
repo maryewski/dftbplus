@@ -34,6 +34,7 @@ module dftbp_timedep_timeprop
       & addBlockChargePotentials, addChargePotentials, getSccHamiltonian
   use dftbp_dftb_nonscc, only : TNonSccDiff, buildH0, buildS
   use dftbp_dftb_onsitecorrection, only : addOnsShift
+  use dftbp_extlibs_openmmpol, only : TOMMPInterface
   use dftbp_dftb_periodic, only : TNeighbourList, updateNeighbourListAndSpecies,&
       & getNrOfNeighboursForAll
   use dftbp_dftb_populations, only :  getChargePerShell, denseSubtractDensityOfAtoms
@@ -257,6 +258,7 @@ module dftbp_timedep_timeprop
     logical :: tNetCharges = .false., tWriteAtomEnergies = .false.
     type(TThermostat), allocatable :: pThermostat
     type(TMDIntegrator), allocatable :: pMDIntegrator
+    type(TOMMPInterface), allocatable :: openmmpolCalc
     class(TDispersionIface), allocatable :: dispersion
     type(TNonSccDiff), allocatable :: derivator
     type(TParallelKS), allocatable :: parallelKS
@@ -365,7 +367,7 @@ contains
 
   !> Initialisation of input variables
   subroutine TElecDynamics_init(this, inp, species, speciesName, tWriteAutotest, autotestTag,&
-      & randomThermostat, mass, nAtom, skCutoff, mCutoff, atomEigVal, dispersion, nonSccDeriv,&
+      & randomThermostat, mass, nAtom, skCutoff, mCutoff, atomEigVal, dispersion, openmmpolCalc, nonSccDeriv,&
       & tPeriodic, parallelKS, tRealHS, kPoint, kWeight, isRangeSep, sccCalc, tblite,&
       & eFieldScaling, hamiltonianType, errStatus)
 
@@ -404,6 +406,9 @@ contains
 
     !> dispersion data and calculations
     class(TDispersionIface), allocatable, intent(inout) :: dispersion
+
+    !> Openmmpol calculator
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
 
     !> Differentiation method for (H^0,S)
     type(TNonSccDiff), intent(in) :: nonSccDeriv
@@ -1023,7 +1028,7 @@ contains
   subroutine updateH(this, H1, ints, H0, speciesAll, qq, q0, coord, orb, potential,&
       & neighbourList, nNeighbourSK, iSquare, iSparseStart, img2CentCell, iStep, chargePerShell,&
       & spinW, env, tDualSpinOrbit, xi, thirdOrd, qBlock, dftbU, onSiteElements, refExtPot,&
-      & deltaRho, H1LC, Ssqr, solvation, rangeSep, dispersion, rho, errStatus)
+      & deltaRho, H1LC, Ssqr, solvation, rangeSep, dispersion, openmmpolCalc, rho, errStatus)
 
     !> ElecDynamics instance
     type(TElecDynamics) :: this
@@ -1121,6 +1126,9 @@ contains
     !> dispersion data and calculations
     class(TDispersionIface), allocatable, intent(inout) :: dispersion
 
+    ! Openmmpol calculator
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
+
     !> Density matrix
     complex(dp), intent(in) :: rho(:,:,:)
 
@@ -1150,7 +1158,7 @@ contains
     call getChargePerShell(qq, orb, speciesAll, chargePerShell)
     call addChargePotentials(env, this%sccCalc, this%tblite, .true., qq, q0, chargePerShell,&
         & orb, this%multipole, speciesAll, neighbourList, img2CentCell, spinW, solvation,&
-        & thirdOrd, dispersion, potential)
+        & thirdOrd, dispersion, this%openmmpolCalc, potential)
 
     if (allocated(dftbU) .or. allocated(onSiteElements)) then
       ! convert to qm representation
@@ -1693,7 +1701,7 @@ contains
     call calcEnergies(env, this%sccCalc, this%tblite, qq, q0, chargePerShell, this%multipole,&
         & this%speciesAll, this%tLaser, .false., dftbU, tDualSpinOrbit, rhoPrim, ham0, orb,&
         & neighbourList, nNeighbourSK, img2CentCell, iSparseStart, 0.0_dp, 0.0_dp, TS,&
-        & potential, energy, thirdOrd, solvation, rangeSep, reks, qDepExtPot, qBlock,&
+        & potential, energy, thirdOrd, solvation, this%openmmpolCalc, rangeSep, reks, qDepExtPot, qBlock,&
         & qiBlock, xi, iAtInCentralRegion, tFixEf, Ef, onSiteElements)
     call sumEnergies(energy)
     ! calcEnergies then sumEnergies returns the total energy Etotal including repulsive and
@@ -3812,7 +3820,7 @@ contains
         & this%potential, neighbourList, nNeighbourSK, iSquare, iSparseStart, img2CentCell, 0,&
         & this%chargePerShell, spinW, env, tDualSpinOrbit, xi, thirdOrd, this%qBlock, dftbU,&
         & onSiteElements, refExtPot, this%deltaRho, this%H1LC, this%Ssqr, solvation, rangeSep,&
-        & this%dispersion, this%trho, errStatus)
+        & this%dispersion, this%openmmpolCalc, this%trho, errStatus)
     @:PROPAGATE_ERROR(errStatus)
 
     if (this%tForces) then
@@ -3894,7 +3902,7 @@ contains
         & this%potential, neighbourList, nNeighbourSK, iSquare, iSparseStart, img2CentCell, 0,&
         & this%chargePerShell, spinW, env, tDualSpinOrbit, xi, thirdOrd, this%qBlock, dftbU,&
         & onSiteElements, refExtPot, this%deltaRho, this%H1LC, this%Ssqr, solvation, rangeSep,&
-        & this%dispersion,this%rho, errStatus)
+        & this%dispersion, this%openmmpolCalc, this%rho, errStatus)
     @:PROPAGATE_ERROR(errStatus)
 
     if (this%tForces) then
@@ -4169,7 +4177,7 @@ contains
         & this%potential, neighbourList, nNeighbourSK, iSquare, iSparseStart, img2CentCell, iStep,&
         & this%chargePerShell, spinW, env, tDualSpinOrbit, xi, thirdOrd, this%qBlock, dftbU,&
         & onSiteElements, refExtPot, this%deltaRho, this%H1LC, this%Ssqr, solvation, rangeSep,&
-        & this%dispersion,this%rho, errStatus)
+        & this%dispersion, this%openmmpolCalc, this%rho, errStatus)
     @:PROPAGATE_ERROR(errStatus)
 
     if (this%tForces) then

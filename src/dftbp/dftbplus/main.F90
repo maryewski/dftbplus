@@ -82,7 +82,7 @@ module dftbp_dftbplus_main
   use dftbp_elecsolvers_elecsolvers, only : TElectronicSolver
   use dftbp_elecsolvers_elecsolvertypes, only : electronicSolverTypes
   use dftbp_extlibs_plumed, only : TPlumedCalc, TPlumedCalc_final
-  use dftbp_extlibs_openmmpol, only: TOMMPInterface
+  use dftbp_extlibs_openmmpol, only: TOMMPInterface, TOMMPInterface_terminate
   use dftbp_extlibs_tblite, only : TTBLite
   use dftbp_geoopt_geoopt, only : TGeoOpt, next, reset
   use dftbp_io_message, only : error, warning
@@ -350,6 +350,10 @@ contains
 
     if (allocated(this%plumedCalc)) then
       call TPlumedCalc_final(this%plumedCalc)
+    end if
+
+    if (allocated(this%openmmpolCalc)) then
+      call TOMMPInterface_terminate(this%openmmpolCalc)
     end if
 
     tGeomEnd = this%tMD .or. tGeomEnd .or. this%tDerivs
@@ -736,7 +740,7 @@ contains
       call addChargePotentials(env, this%scc, this%tblite, updateScc, q, this%q0,&
           & this%chargePerShell, this%orb, this%multipoleInp, this%species, this%neighbourList,&
           & this%img2CentCell, this%spinW, this%solvation, this%thirdOrd, this%dispersion,&
-          & this%potential)
+          & this%openmmpolCalc, this%potential)
 
       call addBlockChargePotentials(qBlock, qiBlock, this%dftbU, this%tImHam,&
           & this%species, this%orb, this%potential)
@@ -1001,6 +1005,9 @@ contains
 
     real(dp), allocatable :: dipoleTmp(:)
 
+    !> TODO: debug
+    integer :: writeDebug_i
+
     if (this%tDipole) then
       allocate(dipoleTmp(3))
     end if
@@ -1136,7 +1143,7 @@ contains
     call env%globalTimer%startTimer(globalTimers%scc)
 
     REKS_SCC: if (allocated(this%reks)) then
-
+    
       lpSCC_REKS: do iSccIter = 1, this%maxSccIter
 
         if (iSccIter == 1) then
@@ -1158,7 +1165,7 @@ contains
         call getHamiltonianLandEnergyL(env, this%denseDesc, this%scc, this%tblite, this%orb,&
             & this%species, this%neighbourList, this%nNeighbourSK, this%iSparseStart,&
             & this%img2CentCell, this%H0, this%ints, this%spinW, this%cellVol, this%extPressure,&
-            & this%dftbEnergy(1), this%q0, this%iAtInCentralRegion, this%solvation, this%thirdOrd,&
+            & this%dftbEnergy(1), this%q0, this%iAtInCentralRegion, this%solvation, this%openmmpolCalc, this%thirdOrd,&
             & this%potential, this%rangeSep, this%nNeighbourLC, this%tDualSpinOrbit, this%xi,&
             & this%isExtField, this%isXlbomd, this%dftbU, this%dftbEnergy(1)%TS, this%qDepExtPot,&
             & this%qBlockOut, this%qiBlockOut, this%tFixEf, this%Ef, this%rhoPrim,&
@@ -1241,7 +1248,6 @@ contains
       ! Standard spin free or unrestricted DFTB
 
       lpSCC: do iSccIter = 1, this%maxSccIter
-
         call processPotentials(env, this, iSccIter, .true., this%qInput, this%qBlockIn,&
             & this%qiBlockIn)
 
@@ -1299,7 +1305,7 @@ contains
             & this%tDualSpinOrbit, this%rhoPrim, this%H0, this%orb, this%neighbourList,&
             & this%nNeighbourSk, this%img2CentCell, this%iSparseStart, this%cellVol,&
             & this%extPressure, this%dftbEnergy(this%deltaDftb%iDeterminant)%TS, this%potential,&
-            & this%dftbEnergy(this%deltaDftb%iDeterminant), this%thirdOrd, this%solvation,&
+            & this%dftbEnergy(this%deltaDftb%iDeterminant), this%thirdOrd, this%solvation, this%openmmpolCalc, &
             & this%rangeSep, this%reks, this%qDepExtPot, this%qBlockOut, this%qiBlockOut,&
             & this%xi, this%iAtInCentralRegion, this%tFixEf, this%Ef, this%onSiteElements,&
             & this%qNetAtom, this%potential%intOnSiteAtom, this%potential%extOnSiteAtom)
@@ -1314,11 +1320,20 @@ contains
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%atomDisp,&
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%Edisp, this%iAtInCentralRegion)
         end if
+
+        ! Openmmpol write coords
+        ! write(*, *) this%openmmpolCalc%pSystem%top%cmm
+
         call sumEnergies(this%dftbEnergy(this%deltaDftb%iDeterminant))
 
         call sccLoopWriting(this, iGeoStep, iLatGeoStep, iSccIter, diffElec, sccErrorQ)
 
         if (tConverged .or. tStopScc) then
+          !> TODO: debug
+          do writeDebug_i=1, this%openmmpolCalc%pSystem%eel%pol_atoms
+            write(*, *) this%openmmpolCalc%pSystem%eel%ipd(:, writeDebug_i, 1)
+          end do
+
           exit lpSCC
         end if
 
@@ -7093,7 +7108,7 @@ contains
   !> and compute the energy of microstates
   subroutine getHamiltonianLandEnergyL(env, denseDesc, sccCalc, tblite, orb, species,&
       & neighbourList, nNeighbourSK, iSparseStart, img2CentCell, H0, ints, spinW, cellVol,&
-      & extPressure, energy, q0, iAtInCentralRegion, solvation, thirdOrd, potential, rangeSep,&
+      & extPressure, energy, q0, iAtInCentralRegion, solvation, openmmpolCalc, thirdOrd, potential, rangeSep,&
       & nNeighbourLC, tDualSpinOrbit, xi, isExtField, isXlbomd, dftbU, TS, qDepExtPot, qBlock,&
       & qiBlock, tFixEf, Ef, rhoPrim, onSiteElements, dispersion, tConverged, species0,&
       & referenceN0, qNetAtom, multipole, reks)
@@ -7154,6 +7169,9 @@ contains
 
     !> Solvation mode
     class(TSolvation), allocatable, intent(inout) :: solvation
+
+    !> Openmmpolcalc
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
 
     !> third order SCC interactions
     type(TThirdOrder), allocatable, intent(inout) :: thirdOrd
@@ -7255,7 +7273,7 @@ contains
       call resetInternalPotentials(tDualSpinOrbit, xi, orb, species, potential)
       call addChargePotentials(env, sccCalc, tblite, .true., reks%qOutputL(:,:,:,iL), q0,&
           & reks%chargePerShellL(:,:,:,iL), orb, multipole, species, neighbourList,&
-          & img2CentCell, spinW, solvation, thirdOrd, dispersion, potential)
+          & img2CentCell, spinW, solvation, thirdOrd, dispersion, openmmpolCalc, potential)
 
       ! reks%intShellL, reks%intBlockL has (qm) component
       reks%intShellL(:,:,:,iL) = potential%intShell
@@ -7366,7 +7384,7 @@ contains
       call calcEnergies(env, sccCalc, tblite, reks%qOutputL(:,:,:,iL), q0,&
           & reks%chargePerShellL(:,:,:,iL), multipole, species, isExtField, isXlbomd, dftbU,&
           & tDualSpinOrbit, rhoPrim, H0, orb, neighbourList, nNeighbourSk, img2CentCell,&
-          & iSparseStart, cellVol, extPressure, TS, potential, energy, thirdOrd, solvation,&
+          & iSparseStart, cellVol, extPressure, TS, potential, energy, thirdOrd, solvation, openmmpolCalc,&
           & rangeSep, reks, qDepExtPot, qBlock, qiBlock, xi, iAtInCentralRegion, tFixEf, Ef,&
           & onSiteElements)
 

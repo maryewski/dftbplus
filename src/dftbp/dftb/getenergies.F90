@@ -16,6 +16,7 @@ module dftbp_dftb_getenergies
   use dftbp_dftb_dispiface, only : TDispersionIface
   use dftbp_dftb_energytypes, only : TEnergies
   use dftbp_dftb_onsitecorrection, only : getEons
+  use dftbp_extlibs_openmmpol, only : TOMMPInterface
   use dftbp_dftb_periodic, only : TNeighbourList
   use dftbp_dftb_populations, only : mulliken
   use dftbp_dftb_potentials, only : TPotentials
@@ -46,7 +47,7 @@ contains
   subroutine calcEnergies(env, sccCalc, tblite, qOrb, q0, chargePerShell, multipole, species,&
       & isExtField, isXlbomd, dftbU, tDualSpinOrbit, rhoPrim, H0, orb, neighbourList,&
       & nNeighbourSK, img2CentCell, iSparseStart, cellVol, extPressure, TS, potential, &
-      & energy, thirdOrd, solvation, rangeSep, reks, qDepExtPot, qBlock, qiBlock, xi,&
+      & energy, thirdOrd, solvation, openmmpolCalc, rangeSep, reks, qDepExtPot, qBlock, qiBlock, xi,&
       & iAtInCentralRegion, tFixEf, Ef, onSiteElements, qNetAtom, vOnSiteAtomInt,&
       & vOnSiteAtomExt)
 
@@ -128,6 +129,9 @@ contains
     !> Solvation model
     class(TSolvation), allocatable, intent(inout) :: solvation
 
+    !> Openmmpol calculator
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
+
     !> Data from rangeseparated calculations
     type(TRangeSepFunc), intent(inout), allocatable :: rangeSep
 
@@ -192,6 +196,11 @@ contains
       call qDepExtPot%addEnergy(energy%atomExt)
     end if
     energy%Eext = sum(energy%atomExt)
+
+    energy%atomQmmm(:) = 0.0_dp
+    if (allocated(openmmpolCalc)) then
+      energy%atomQmmm(:) = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * potential%extAtom(:,1)
+    end if
 
     if (allocated(sccCalc)) then
       if (isXlbomd) then

@@ -7980,21 +7980,27 @@ contains
     type(string), allocatable :: searchPath(:)
   #:endif
 
-    character(len=:), allocatable :: openmmpolInputFile
+    character(:), allocatable :: openmmpolInputFile
+    integer :: openmmpSolver
 
     call getChild(rootNode, "Openmmpol", openmmpolNode, requested=.false.)
     if (.not. associated(openmmpolNode)) return
     #:if WITH_OPENMMPOL
       allocate(openmmpolInput)
-      call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.dat")
-      openmmpolInputFile = unquote(char(buffer))
-      call getParamSearchPath(searchPath)
-      call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
-      if (.not. allocated(openmmpolInput%filename)) then
-        call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
-      end if
+        ! Read filename parameter and look for parameters file;
+        ! if not found, set to default
+        call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.mmp")
+        openmmpolInputFile = unquote(char(buffer))
+        call getParamSearchPath(searchPath)
+        call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
+        if (.not. allocated(openmmpolInput%filename)) then
+          call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
+        endif
+        ! Assign solver, set to default if not provided
+        call getChildValue(openmmpolNode, "Solver", openmmpSolver, default=1)
+        openmmpolInput%solver = openmmpSolver
     #:else
-      call detailedError(openmmpolNode, "openmmpol calculation requsted, but DFTB+ was not with openmmpol support.")
+      call detailedError(openmmpolNode, "openmmpol calculation requested, but DFTB+ was not compiled with openmmpol support.")
     #:endif
 
   end subroutine parseOpenmmpol

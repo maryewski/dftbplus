@@ -1553,7 +1553,9 @@ contains
 
     call initReferencePopulation_(input, this%orb, this%hamiltonianType, this%referenceN0)
 
-    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms)
+    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms) &
+                            .or. allocated(input%ctrl%openmmpolInput)
+                            
     call initReferenceCharges(this%species0, this%orb, this%referenceN0, this%nSpin, this%q0,&
         & this%qShell0, input%ctrl%customOccAtoms, input%ctrl%customOccFillings)
 
@@ -1569,10 +1571,31 @@ contains
     call getBufferedCholesky_(this%tRealHS, this%parallelKS%nLocalKS, nBufferedCholesky)
     call TElectronicSolver_init(this%electronicSolver, input%ctrl%solver%iSolver, nBufferedCholesky)
 
-    ! Initialize openmmpol calculator, if necessary
+    ! Initialize openmmpol calculator
     if (allocated(input%ctrl%openmmpolInput)) then
+      ! No periodic boundary conditions
+      if (this%tPeriodic) then
+        call error("openmmpol calculations do not support periodic boundary conditions.")
+      end if
+
+      ! No REKS
+      if (allocated(this%reks)) then
+        call error("REKS calculations with openmmpol are not supported")
+      end if
+
+      ! No real-time electron dynamics
+      if (allocated(input%ctrl%elecDynInp)) then
+        call error("Electron dynamics with openmmpol are not supported")
+      end if
+
+      ! No linear response (yet)
+      if (allocated(input%ctrl%lrespini)) then
+        call error("Linear response calculations with openmmpol are not yet supported")
+      end if
+
+      ! If sanity checks pass, initialize
       allocate(this%openmmpolCalc)
-      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput)
+      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%nAtom, this%species0, this%coord0)
       ! write(*, *) "OPENMMPOL INITIALIZED"
     end if
 
@@ -1925,6 +1948,9 @@ contains
       if (allocated(this%dispersion)) then
         call error ("Dispersion interactions are not currently available for transport&
             & calculations")
+      end if
+      if (allocated(this%openmmpolCalc)) then
+        call error ("Openmmpol polarizable QM/MM is not yet available for transport calculations")
       end if
       if (this%nSpin > 2) then
         call error("Non-collinear spin polarization disabled for transport calculations at the&
@@ -3664,7 +3690,7 @@ contains
       call TElecDynamics_init(this%electronDynamics, input%ctrl%elecDynInp, this%species0,&
           & this%speciesName, this%tWriteAutotest, autotestTag, randomThermostat, this%mass,&
           & this%nAtom, this%cutOff%skCutoff, this%cutOff%mCutoff, this%atomEigVal,&
-          & this%dispersion, this%nonSccDeriv, this%tPeriodic, this%parallelKS, this%tRealHS,&
+          & this%dispersion, this%openmmpolCalc, this%nonSccDeriv, this%tPeriodic, this%parallelKS, this%tRealHS,&
           & this%kPoint, this%kWeight, this%isRangeSep, this%scc, this%tblite, this%eFieldScaling,&
           & this%hamiltonianType, errStatus)
       if (errStatus%hasError()) then

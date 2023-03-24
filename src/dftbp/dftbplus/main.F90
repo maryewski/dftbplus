@@ -1330,9 +1330,11 @@ contains
 
         if (tConverged .or. tStopScc) then
           !> TODO: debug
-          do writeDebug_i=1, this%openmmpolCalc%pSystem%eel%pol_atoms
-            write(*, *) this%openmmpolCalc%pSystem%eel%ipd(:, writeDebug_i, 1)
-          end do
+          ! if (allocated(this%openmmpolCalc)) then
+          !   do writeDebug_i=1, this%openmmpolCalc%pSystem%eel%pol_atoms
+          !     write(*, *) this%openmmpolCalc%pSystem%eel%ipd(:, writeDebug_i, 1)
+          !   end do
+          ! end if
 
           exit lpSCC
         end if

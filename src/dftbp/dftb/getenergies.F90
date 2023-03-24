@@ -199,8 +199,9 @@ contains
 
     energy%atomQmmm(:) = 0.0_dp
     if (allocated(openmmpolCalc)) then
+      ! TODO: call getEnergies!
       ! energy%atomQmmm(:) = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * potential%(:,1)
-      energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%pQMHelper%V_m2n
+      ! energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%pQMHelper%V_m2n
     end if
     energy%EqmmmCoupling = sum(energy%atomQmmm)
 

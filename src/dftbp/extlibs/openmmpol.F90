@@ -5,7 +5,7 @@
 !  See the LICENSE file for terms of usage and distribution.                                       !
 !--------------------------------------------------------------------------------------------------!
 #:include "common.fypp"
-
+#:include "error.fypp"
 module dftbp_extlibs_openmmpol
 
 #:if WITH_OPENMMPOL
@@ -13,21 +13,23 @@ module dftbp_extlibs_openmmpol
                                ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
                                OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
-
+#:endif
+    use dftbp_io_message, only : error, warning
     use dftbp_common_environment, only : TEnvironment
     use dftbp_dftb_periodic, only : TNeighbourList
     use dftbp_type_commontypes, only : TOrbitals
     use dftbp_dftb_charges, only : getSummedCharges
-#:endif
     use dftbp_common_accuracy, only : dp
     implicit none
 
 ! SECTION: type definitions
-
-#:if WITH_OPENMMPOL
     type :: TOMMPInterface
+
+    #:if WITH_OPENMMPOL
         type(ommp_system), pointer :: pSystem
         type(ommp_qm_helper), pointer :: pQMHelper
+    #:endif
+
         integer :: solver
         real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
         real(dp) :: forceFieldEnergy
@@ -38,10 +40,6 @@ module dftbp_extlibs_openmmpol
         procedure :: addPotential
         ! procedure :: addGradients
     end type
-#:else
-    type :: TOMMPInterface
-    end type
-#:endif
 
 type :: TOMMPInput
     character(:), allocatable :: filename
@@ -53,7 +51,6 @@ public TOMMPInterface, TOMMPInterface_init
 contains 
 
 ! SECTION: subroutines
-#:if WITH_OPENMMPOL
         subroutine TOMMPInterface_init(this, openmmpolInput, nQMatoms, atomTypes, qmAtomCoords)
             type(TOMMPInterface), intent(out) :: this
             type(TOMMPInput), intent(in) :: openmmpolInput
@@ -61,32 +58,47 @@ contains
             integer, dimension(nQMatoms), intent(in) :: atomTypes
             real(dp), dimension(3, nQMatoms), intent(in) :: qmAtomCoords
             real(dp), allocatable, dimension(:) :: netCharges
-
+            
+            #:if WITH_OPENMMPOL
             this%solver = openmmpolInput%solver
             this%forceFieldEnergy = 0.0_dp
 
             call ommp_init_mmp(this%pSystem, openmmpolInput%filename)
-            ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
             allocate(netCharges(nQMatoms))
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
             deallocate(netCharges)
+            #:else 
+            call notImplementedError
+            #:endif
 
         end subroutine
 
         subroutine TOMMPInterface_terminate(this)
             type(TOMMPInterface), intent(out) :: this
+            #:if WITH_OPENMMPOL
+            write(*, *) "Termination is called"
             call ommp_terminate(this%pSystem)
             call ommp_terminate_qm_helper(this%pQMHelper)
+            #:else 
+            call notImplementedError
+            #:endif
         end subroutine
 
         subroutine updateQMCoords(this)
             class(TOMMPInterface), intent(inout) :: this
 
+            #:if WITH_OPENMMPOL
             !> TODO: to be cleared
             this%pSystem%eel%ipd_done = .false.
             this%pSystem%eel%D2mgg_done = .false.
             this%pSystem%eel%D2dgg_done = .false.
             this%pQMHelper%E_n2p_done = .false.
+
+            #:else 
+            call notImplementedError
+            #:endif
+
         end subroutine
 
         subroutine updateQMCharges(this, env, species, neighList, qq, q0, img2CentCell, orb)
@@ -116,6 +128,7 @@ contains
             ! Charge per atom (internal variable)
             real(dp), allocatable :: qPerAtom(:)
 
+            #:if WITH_OPENMMPOL
             write(*, *) "Call to QM charges"
             allocate(qPerAtom(size(species)))
 
@@ -139,7 +152,11 @@ contains
             !> Set external field for MM, solve the polarization equations
             call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
 
-            write(*, "(A,F12.6)") "E_QMMM: ", dot_product(this%pQMHelper%qqm, this%pQMHelper%V_m2n)
+            write(*, "(A,F12.6)") "E_QMMM: ", dot_product(this%pQMHelper%qqm, this%pQMHelper%V_m2n) * 627.5
+
+            #:else 
+            call notImplementedError
+            #:endif
         end subroutine
 
         subroutine addPotential(this, shiftPerAtom)
@@ -151,6 +168,7 @@ contains
             !> Computed shift
             real(dp), allocatable :: shiftFromOpenmmpol(:)
 
+            #:if WITH_OPENMMPOL
             !> TODO: debug
             write(*, *) "Call to addPotential"
             write(*, *) this%pQMHelper%qqm
@@ -158,20 +176,23 @@ contains
             !> Add potential from openmmpol to the vector of potentials
             shiftPerAtom = shiftPerAtom + this%pQMHelper%V_m2n
 
+            #:else 
+            call notImplementedError
+            #:endif
+
         end subroutine
 
         subroutine getEnergies(this)
             class(TOMMPInterface) :: this
+            #:if WITH_OPENMMPOL
+            #:else 
+            call notImplementedError
+            #:endif
 
         end subroutine
 
-#:else
-    subroutine TOMMPInterface_init()
-    end subroutine
-
-    subroutine TOMMPInterface_terminate()
-    end subroutine
-#:endif
-
-
+        subroutine notImplementedError
+            call error("DFTB+ compiled without support for openmmpol library")
+        end subroutine notImplementedError
 end module
+

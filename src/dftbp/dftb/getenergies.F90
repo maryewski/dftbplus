@@ -197,14 +197,6 @@ contains
     end if
     energy%Eext = sum(energy%atomExt)
 
-    energy%atomQmmm(:) = 0.0_dp
-    if (allocated(openmmpolCalc)) then
-      ! TODO: call getEnergies!
-      ! energy%atomQmmm(:) = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * potential%(:,1)
-      ! energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%pQMHelper%V_m2n
-    end if
-    energy%EqmmmCoupling = sum(energy%atomQmmm)
-
     if (allocated(sccCalc)) then
       if (isXlbomd) then
         call sccCalc%getEnergyPerAtomXlbomd(species, orb, qOrb, q0, energy%atomSCC)
@@ -251,6 +243,16 @@ contains
       call solvation%getEnergies(energy%atomSolv)
       energy%eSolv = sum(energy%atomSolv(iAtInCentralRegion))
     end if
+
+    energy%atomQmmm = 0.0_dp
+    if (allocated(openmmpolCalc)) then
+      ! TODO: call getEnergies!
+      ! energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%qmAtomsPotential
+      ! call openmmpolCalc%addAtomEnergies(energy%atomQmmm)
+      energy%atomQmmm = energy%atomQmmm + openmmpolCalc%qmmmCouplingEnergyPerAtom
+    end if
+    energy%EqmmmCoupling = sum(energy%atomQmmm)
+    write(*, *) energy%EqmmmCoupling
 
     if (allocated(onSiteElements)) then
       call getEons(energy%atomOnSite, qBlock, qiBlock, q0, onSiteElements, species, orb)

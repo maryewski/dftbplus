@@ -6,6 +6,7 @@
 !--------------------------------------------------------------------------------------------------!
 #:include "common.fypp"
 #:include "error.fypp"
+
 module dftbp_extlibs_openmmpol
 
 #:if WITH_OPENMMPOL
@@ -32,11 +33,12 @@ module dftbp_extlibs_openmmpol
 
         integer :: solver
         real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
+        real(dp), allocatable :: qmAtomsPotential(:)
         real(dp) :: forceFieldEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
-        procedure :: getEnergies
+        procedure :: addAtomEnergies
         procedure :: addPotential
         ! procedure :: addGradients
     end type
@@ -62,6 +64,10 @@ contains
             #:if WITH_OPENMMPOL
             this%solver = openmmpolInput%solver
             this%forceFieldEnergy = 0.0_dp
+            allocate(this%qmAtomsPotential(nQMatoms))
+            this%qmAtomsPotential(:) = 0.0_dp
+            allocate(this%qmmmCouplingEnergyPerAtom(nQMatoms))
+            this%qmmmCouplingEnergyPerAtom(:) = 0.0_dp
 
             call ommp_init_mmp(this%pSystem, openmmpolInput%filename)
             call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
@@ -80,6 +86,8 @@ contains
             write(*, *) "Termination is called"
             call ommp_terminate(this%pSystem)
             call ommp_terminate_qm_helper(this%pQMHelper)
+            ! deallocate(this%qmAtomsPotential)
+            ! deallocate(this%qmmmCouplingEnergyPerAtom)
             #:else 
             call notImplementedError
             #:endif
@@ -152,7 +160,12 @@ contains
             !> Set external field for MM, solve the polarization equations
             call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
 
-            write(*, "(A,F12.6)") "E_QMMM: ", dot_product(this%pQMHelper%qqm, this%pQMHelper%V_m2n) * 627.5
+            !> Store external potential for later access
+            this%qmAtomsPotential(:) = this%pQMHelper%V_m2n
+            this%qmmmCouplingEnergyPerAtom(:) = this%pQMHelper%qqm * this%qmAtomsPotential 
+            
+            !> TODO: debug
+            write(*, "(A,F12.6)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5
 
             #:else 
             call notImplementedError
@@ -182,9 +195,16 @@ contains
 
         end subroutine
 
-        subroutine getEnergies(this)
+        subroutine addAtomEnergies(this, energyArray)
             class(TOMMPInterface) :: this
+
+            !> Array to write energy into
+            real(dp), intent(inout), allocatable :: energyArray
+
             #:if WITH_OPENMMPOL
+            !> Write energy per atom (charge Q * potential V)
+            ! @:ASSERT (size(energyArray) == size(this%qmAtomsPotential))
+            ! energyArray = energyArray + this%pQMHelper%qqm * this%pQMHelper%V_m2n
             #:else 
             call notImplementedError
             #:endif

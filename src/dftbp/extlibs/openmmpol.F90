@@ -29,6 +29,8 @@ module dftbp_extlibs_openmmpol
         type(ommp_system), pointer :: pSystem
         type(ommp_qm_helper), pointer :: pQMHelper
         integer :: solver
+        real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
+        real(dp) :: forceFieldEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
@@ -58,10 +60,11 @@ contains
             integer, intent(in) :: nQMatoms
             integer, dimension(nQMatoms), intent(in) :: atomTypes
             real(dp), dimension(3, nQMatoms), intent(in) :: qmAtomCoords
-
             real(dp), allocatable, dimension(:) :: netCharges
 
             this%solver = openmmpolInput%solver
+            this%forceFieldEnergy = 0.0_dp
+
             call ommp_init_mmp(this%pSystem, openmmpolInput%filename)
             ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
             allocate(netCharges(nQMatoms))
@@ -115,8 +118,13 @@ contains
 
             write(*, *) "Call to QM charges"
             allocate(qPerAtom(size(species)))
+
+            !> getSummedCharges computes population, necessary to multiply by -1 to get charge
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=qPerAtom)
-            this%pQMHelper%qqm = qPerAtom
+            qPerAtom = -qPerAtom
+
+            !> Set charges
+            this%pQMHelper%qqm = qPerAtom 
             deallocate(qPerAtom)
 
             !> Charges updated, re-evaluation of quantities is requested
@@ -131,6 +139,7 @@ contains
             !> Set external field for MM, solve the polarization equations
             call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
 
+            write(*, "(A,F12.6)") "E_QMMM: ", dot_product(this%pQMHelper%qqm, this%pQMHelper%V_m2n)
         end subroutine
 
         subroutine addPotential(this, shiftPerAtom)

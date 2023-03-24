@@ -199,8 +199,10 @@ contains
 
     energy%atomQmmm(:) = 0.0_dp
     if (allocated(openmmpolCalc)) then
-      energy%atomQmmm(:) = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * potential%extAtom(:,1)
+      ! energy%atomQmmm(:) = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * potential%(:,1)
+      energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%pQMHelper%V_m2n
     end if
+    energy%EqmmmCoupling = sum(energy%atomQmmm)
 
     if (allocated(sccCalc)) then
       if (isXlbomd) then
@@ -337,7 +339,7 @@ contains
 
     energy%atomElec(:) = energy%atomNonSCC + energy%atomSCC + energy%atomSpin + energy%atomDftbu&
         & + energy%atomLS + energy%atomExt + energy%atom3rd + energy%atomOnSite &
-        & + energy%atomSolv
+        & + energy%atomSolv + energy%atomQmmm
     energy%atomTotal(:) = energy%atomElec + energy%atomRep + energy%atomDisp + energy%atomHalogenX
     energy%Etotal = energy%Eelec + energy%Erep + energy%eDisp + energy%eHalogenX
     energy%EMermin = energy%Etotal - sum(energy%TS)

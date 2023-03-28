@@ -10,7 +10,7 @@
 module dftbp_extlibs_openmmpol
 
 #:if WITH_OPENMMPOL
-    use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_terminate, ommp_print_summary, &
+    use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_init_xyz, ommp_terminate, ommp_print_summary, &
                                ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
                                OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
@@ -44,7 +44,9 @@ module dftbp_extlibs_openmmpol
     end type
 
 type :: TOMMPInput
-    character(:), allocatable :: filename
+    character(:), allocatable :: inputFormat
+    character(:), allocatable :: geomFilename
+    character(:), allocatable :: paramsFilename
     integer :: solver
 end type
 
@@ -69,7 +71,15 @@ contains
             allocate(this%qmmmCouplingEnergyPerAtom(nQMatoms))
             this%qmmmCouplingEnergyPerAtom(:) = 0.0_dp
 
-            call ommp_init_mmp(this%pSystem, openmmpolInput%filename)
+            if (openmmpolInput%inputFormat == "Tinker") then
+                call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
+            else if (openmmpolInput%inputFormat == "mmp") then
+                call ommp_init_mmp(this%pSystem, openmmpolInput%paramsFilename)
+            else
+                call error("Bad openmmpol input format supplied to initializer!")
+            end if
+
+            ! TODO: add verbosity control
             call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
             allocate(netCharges(nQMatoms))
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
@@ -83,9 +93,9 @@ contains
         subroutine TOMMPInterface_terminate(this)
             type(TOMMPInterface), intent(out) :: this
             #:if WITH_OPENMMPOL
-            write(*, *) "Termination is called"
             call ommp_terminate(this%pSystem)
             call ommp_terminate_qm_helper(this%pQMHelper)
+            !> TODO: why do those deallocations cause segfault?
             ! deallocate(this%qmAtomsPotential)
             ! deallocate(this%qmmmCouplingEnergyPerAtom)
             #:else 
@@ -137,18 +147,22 @@ contains
             real(dp), allocatable :: qPerAtom(:)
 
             #:if WITH_OPENMMPOL
+            !> Debug: print a message every time charges are updated
             write(*, *) "Call to QM charges"
+
             allocate(qPerAtom(size(species)))
 
-            !> getSummedCharges computes population, necessary to multiply by -1 to get charge
+            !> getSummedCharges computes population, necessary to
+            !  multiply by -1 to get correct charge sign
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=qPerAtom)
             qPerAtom = -qPerAtom
 
-            !> Set charges
+            !> Set charges in the helper object
             this%pQMHelper%qqm = qPerAtom 
             deallocate(qPerAtom)
 
-            !> Charges updated, re-evaluation of quantities is requested
+            !> Since charges are now updated, re-evaluation of
+            !  charge-related quantities is requested
             this%pSystem%eel%ipd_done = .false.
             this%pSystem%eel%D2mgg_done = .false.
             this%pSystem%eel%D2dgg_done = .false.
@@ -164,8 +178,8 @@ contains
             this%qmAtomsPotential(:) = this%pQMHelper%V_m2n
             this%qmmmCouplingEnergyPerAtom(:) = this%pQMHelper%qqm * this%qmAtomsPotential 
             
-            !> TODO: debug
-            write(*, "(A,F12.6)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5
+            !> Debug: prints total QM/MM coupling energy on every step
+            ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
 
             #:else 
             call notImplementedError
@@ -182,7 +196,7 @@ contains
             real(dp), allocatable :: shiftFromOpenmmpol(:)
 
             #:if WITH_OPENMMPOL
-            !> TODO: debug
+            !> Debug: print charges every time the potential is computed
             write(*, *) "Call to addPotential"
             write(*, *) this%pQMHelper%qqm
 

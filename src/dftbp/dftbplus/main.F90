@@ -942,7 +942,7 @@ contains
       call writeDetailedOut3(this%fdDetailedOut%unit, this%qInput, this%qOutput,&
           & this%dftbEnergy(this%deltaDftb%iDeterminant), this%species, allocated(this%dftbU),&
           & this%tPrintMulliken, this%Ef, this%extPressure, this%cellVol, this%tAtomicEnergy,&
-          & this%dispersion, allocated(this%eField), this%tPeriodic, this%nSpin, this%tSpin,&
+          & this%dispersion, this%openmmpolCalc, allocated(this%eField), this%tPeriodic, this%nSpin, this%tSpin,&
           & this%tSpinOrbit, this%tSccCalc, allocated(this%onSiteElements),&
           & this%iAtInCentralRegion, this%electronicSolver, allocated(this%halogenXCorrection),&
           & this%isRangeSep, allocated(this%thirdOrd), allocated(this%solvation))
@@ -1401,7 +1401,7 @@ contains
         call writeDetailedOut3(this%fdDetailedOut%unit, this%qInput, this%qOutput,&
             & this%dftbEnergy(this%deltaDftb%iDeterminant), this%species, allocated(this%dftbU),&
             & this%tPrintMulliken, this%Ef, this%extPressure, this%cellVol, this%tAtomicEnergy,&
-            & this%dispersion, allocated(this%eField), this%tPeriodic, this%nSpin, this%tSpin,&
+            & this%dispersion, this%openmmpolCalc, allocated(this%eField), this%tPeriodic, this%nSpin, this%tSpin,&
             & this%tSpinOrbit, this%tSccCalc, allocated(this%onSiteElements),&
             & this%iAtInCentralRegion, this%electronicSolver, allocated(this%halogenXCorrection),&
             & this%isRangeSep, allocated(this%thirdOrd), allocated(this%solvation))

@@ -26,6 +26,7 @@ module dftbp_dftbplus_mainio
   use dftbp_dftb_elstatpot, only : TElStatPotentials
   use dftbp_dftb_energytypes, only : TEnergies
   use dftbp_dftb_extfields, only : TEField
+  use dftbp_extlibs_openmmpol, only : TOMMPInterface
   use dftbp_dftb_periodic, only : TNeighbourList
   use dftbp_dftb_sccinit, only : writeQToFile
   use dftbp_dftb_sparse2dense, only : unpackHS, unpackSPauli
@@ -3206,7 +3207,7 @@ contains
 
   !> Third group of data to go to detailed.out
   subroutine writeDetailedOut3(fd, qInput, qOutput, energy, species, tDFTBU, tPrintMulliken, Ef,&
-      & pressure, cellVol, tAtomicEnergy, dispersion, isExtField, tPeriodic, nSpin, tSpin,&
+      & pressure, cellVol, tAtomicEnergy, dispersion, openmmpolCalc, isExtField, tPeriodic, nSpin, tSpin,&
       & tSpinOrbit, tScc, tOnSite, iAtInCentralRegion, electronicSolver, tHalogenX,&
       & tRangeSep, t3rd, tSolv)
 
@@ -3245,6 +3246,9 @@ contains
 
     !> Dispersion interactions object
     class(TDispersionIface), allocatable, intent(inout) :: dispersion
+
+    !> Openmmpol calculator
+    type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
 
     !> Is there an external field present
     logical, intent(in) :: isExtField
@@ -3366,6 +3370,11 @@ contains
       write(fd, format2U) 'Energy ext. field', energy%Eext, 'H', energy%Eext * Hartree__eV, 'eV'
     end if
 
+    !> Electronic part of QM/MM energy
+    if (allocated(openmmpolCalc)) then
+      write(fd, format2U) 'QM/MM coupling energy', energy%EqmmmCoupling, 'H', energy%EqmmmCoupling * Hartree__eV, 'eV'
+    end if
+
     if (tSolv) then
       write(fd, format2U) 'Solvation energy', energy%ESolv, 'H', energy%ESolv * Hartree__eV, 'eV'
     end if
@@ -3385,6 +3394,11 @@ contains
     if (tHalogenX) then
       write(fd, format2U) 'Halogen correction energy', energy%eHalogenX, 'H',&
           & energy%eHalogenX * Hartree__eV, 'eV'
+    end if
+
+    !> Pure molecular mechanical part of QM/MM energy
+    if (allocated(openmmpolCalc)) then
+      write(fd, format2U) 'Force field energy', energy%Eforcefield, 'H', energy%Eforcefield * Hartree__eV, 'eV'
     end if
 
     write(fd, format2U) 'Total energy', energy%Etotal, 'H', energy%Etotal * Hartree__eV, 'eV'

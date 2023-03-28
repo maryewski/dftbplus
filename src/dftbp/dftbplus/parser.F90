@@ -7973,34 +7973,86 @@ contains
     type(fnode), pointer, intent(in) :: rootNode
     type(TOMMPInput), allocatable, intent(out) :: openmmpolInput
 
-    type(fnode), pointer :: openmmpolNode
+    type(fnode), pointer :: openmmpolHeadNode
+    type(fnode), pointer :: openmmpolInputFilesNode
     type(string) :: buffer
 
   #:if WITH_OPENMMPOL
     type(string), allocatable :: searchPath(:)
   #:endif
 
-    character(:), allocatable :: openmmpolInputFile
+    ! Dummy for storing string of current input file
+    character(:), allocatable :: inputFileName
     integer :: openmmpSolver
 
-    call getChild(rootNode, "Openmmpol", openmmpolNode, requested=.false.)
-    if (.not. associated(openmmpolNode)) return
+    call getChild(rootNode, "Openmmpol", openmmpolHeadNode, requested=.false.)
+    if (.not. associated(openmmpolHeadNode)) return
     #:if WITH_OPENMMPOL
       allocate(openmmpolInput)
+        ! TODO: add input node, i.e. Input = Tinker/MMP {param1 = "..."
+        !                                                param2 = "..."
+        !                                                              }
+        ! Get Input node and assert that its name corresponds to known file format
+        call getChild(openmmpolHeadNode, "Input", openmmpolInputFilesNode, requested=.true.)
+
+        ! Get input file format
+        call getChildValue(openmmpolInputFilesNode, "Format", buffer)
+
+        ! call getNodeName(openmmpolInputFilesNode, buffer)
+        openmmpolInput%inputFormat = unquote(char(buffer))
+
+        ! Get search path for files
+        call getParamSearchPath(searchPath)
+        ! Tinker input
+        if (openmmpolInput%inputFormat == "Tinker") then
+          ! Get geometry
+          call getChildValue(openmmpolInputFilesNode, "GeometryFilename", buffer)
+          inputFileName = unquote(char(buffer))
+          call findFile(searchPath, inputFileName, openmmpolInput%geomFilename)
+
+          if (.not. allocated(openmmpolInput%geomFilename)) then
+            call error("Could not find openmmpol geometry input file (Tinker format): '" // inputFileName // "'")
+          end if
+
+          ! Get force field parameters
+          call getChildValue(openmmpolInputFilesNode, "ParametersFilename", buffer)
+          inputFileName = unquote(char(buffer))
+          call findFile(searchPath, inputFileName, openmmpolInput%paramsFilename)
+
+          if (.not. allocated(openmmpolInput%paramsFilename)) then
+            call error("Could not find openmmpol force field parameters input file (Tinker format): '" // inputFileName // "'")
+          end if
+
+        ! mmp input
+        else if (openmmpolInput%inputFormat == "mmp") then
+          call getChildValue(openmmpolInputFilesNode, "ParametersFilename", buffer)
+          inputFileName = unquote(char(buffer))
+          call findFile(searchPath, inputFileName, openmmpolInput%paramsFilename)
+          if (.not. allocated(openmmpolInput%paramsFilename)) then
+            call error("Could not find openmmpol force field parameters input file (Tinker format): '" // inputFileName // "'")
+          end if
+
+        else
+          call error("Input file format for openmmpol is not recognized")
+
+        end if
         ! Read filename parameter and look for parameters file;
         ! if not found, set to default
-        call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.mmp")
-        openmmpolInputFile = unquote(char(buffer))
-        call getParamSearchPath(searchPath)
-        call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
-        if (.not. allocated(openmmpolInput%filename)) then
-          call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
-        endif
+        ! call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.mmp")
+        ! openmmpolInputFile = unquote(char(buffer))
+        ! call getParamSearchPath(searchPath)
+        ! call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
+        ! if (.not. allocated(openmmpolInput%filename)) then
+        !   call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
+        ! endif
+
+        ! TODO: add vdW parameters for QM atoms
+
         ! Assign solver, set to default if not provided
-        call getChildValue(openmmpolNode, "Solver", openmmpSolver, default=1)
+        call getChildValue(openmmpolHeadNode, "Solver", openmmpSolver, default=1)
         openmmpolInput%solver = openmmpSolver
     #:else
-      call detailedError(openmmpolNode, "openmmpol calculation requested, but DFTB+ was not compiled with openmmpol support.")
+      call detailedError(openmmpolHeadNode, "openmmpol calculation requested, but DFTB+ was not compiled with openmmpol support.")
     #:endif
 
   end subroutine parseOpenmmpol

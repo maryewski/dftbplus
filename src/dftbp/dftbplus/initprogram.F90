@@ -1596,7 +1596,6 @@ contains
       ! If sanity checks pass, initialize
       allocate(this%openmmpolCalc)
       call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%nAtom, this%species0, this%coord0)
-      ! write(*, *) "OPENMMPOL INITIALIZED"
     end if
 
   #:if WITH_TRANSPORT

@@ -145,7 +145,7 @@ contains
 
   !> Add potentials coming from electrostatics (in various boundary conditions and models), possibly
   !> spin, and where relevant dispersion
-  subroutine addChargePotentials(env, sccCalc, tblite, updateScc, qInput, q0, chargePerShell,&
+  subroutine addChargePotentials(env, sccCalc, tblite, updateScc, isFirstCallInLoop, qInput, q0, chargePerShell,&
       & orb, multipole, species, neighbourList, img2CentCell, spinW, solvation, thirdOrd,&
       & dispersion, openmmpolCalc, potential)
 
@@ -160,6 +160,9 @@ contains
 
     !> Whether the charges in the scc calculator should be updated before obtaining the potential
     logical, intent(in) :: updateScc
+
+    !> If processPotentials being called first time during current SCC iteration
+    logical, intent(in) :: isFirstCallInLoop
 
     !> Input atomic populations
     real(dp), intent(in) :: qInput(:,:,:)
@@ -247,7 +250,11 @@ contains
     end if
 
     if (allocated(openmmpolCalc)) then
-      call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
+      ! We should avoid solving polarization equations several times per loop, thus
+      ! we only update charges (and recompute polarzation) one time
+      if (.not. isFirstCallInLoop) then
+        call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
+      end if
       call openmmpolCalc%addPotential(atomPot(:, 1))
     end if
 

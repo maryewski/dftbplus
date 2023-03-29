@@ -1443,7 +1443,13 @@ contains
     end select
 
     call parseChimes(node, ctrl%chimesRepInput)
+
+    ! Parse openmmpol input
     call parseOpenmmpol(node, ctrl%openmmpolInput)
+    ! If parsed successfully, set updateSccAfterDiag to false
+    ! if (allocated(ctrl%openmmpolInput)) then
+    !   ctrl%updateSccAfterDiag = .false.
+    ! end if
 
     ! SCC
     call getChildValue(node, "SCC", ctrl%tSCC, .false.)
@@ -8025,6 +8031,7 @@ contains
 
         ! mmp input
         else if (openmmpolInput%inputFormat == "mmp") then
+          ! Get force field + parameters in the same file
           call getChildValue(openmmpolInputFilesNode, "ParametersFilename", buffer)
           inputFileName = unquote(char(buffer))
           call findFile(searchPath, inputFileName, openmmpolInput%paramsFilename)

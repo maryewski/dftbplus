@@ -148,7 +148,7 @@ contains
 
             #:if WITH_OPENMMPOL
             !> Debug: print a message every time charges are updated
-            write(*, *) "Call to QM charges"
+            ! write(*, *) "Call to QM charges"
 
             allocate(qPerAtom(size(species)))
 
@@ -197,11 +197,11 @@ contains
 
             #:if WITH_OPENMMPOL
             !> Debug: print charges every time the potential is computed
-            write(*, *) "Call to addPotential"
-            write(*, *) this%pQMHelper%qqm
+            ! write(*, *) "Call to addPotential"
+            ! write(*, *) this%pQMHelper%qqm
 
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom + this%pQMHelper%V_m2n
+            shiftPerAtom = shiftPerAtom + this%qmAtomsPotential
 
             #:else 
             call notImplementedError

@@ -252,7 +252,6 @@ contains
       energy%atomQmmm = energy%atomQmmm + openmmpolCalc%qmmmCouplingEnergyPerAtom
     end if
     energy%EqmmmCoupling = sum(energy%atomQmmm)
-    write(*, *) energy%EqmmmCoupling
 
     if (allocated(onSiteElements)) then
       call getEons(energy%atomOnSite, qBlock, qiBlock, q0, onSiteElements, species, orb)

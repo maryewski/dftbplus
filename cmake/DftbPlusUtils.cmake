@@ -122,10 +122,6 @@ function (dftbp_add_fypp_defines fyppflags)
     list(APPEND _fyppflags -DWITH_TBLITE)
   endif()
 
-  if(WITH_OPENMMPOL)
-    list(APPEND _fyppflags -DWITH_OPENMMPOL)
-  endif()
-
   if(WITH_C_EXECUTABLES)
     list(APPEND _fyppflags -DWITH_C_EXECUTABLES)
   endif()

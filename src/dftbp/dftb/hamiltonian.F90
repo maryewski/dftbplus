@@ -251,7 +251,7 @@ contains
 
     if (allocated(openmmpolCalc)) then
       ! We should avoid solving polarization equations several times per loop, thus
-      ! we only update charges (and recompute polarzation) one time
+      ! we only update charges (and recompute polarzation) one time per SCF step
       if (.not. isFirstCallInLoop) then
         call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
       end if

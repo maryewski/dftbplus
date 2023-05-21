@@ -1285,6 +1285,7 @@ contains
             & this%SSqrReal, this%eigvecsReal, this%iRhoPrim, this%HSqrCplx, this%SSqrCplx,&
             & this%eigvecsCplx, this%rhoSqrReal, this%deltaRhoInSqr, this%deltaRhoOutSqr,&
             & this%nNeighbourLC, this%deltaDftb, errStatus)
+
         if (errStatus%hasError()) then
           call error(errStatus%message)
         end if
@@ -1294,6 +1295,11 @@ contains
         end if
 
         call processOutputCharges(env, this)
+
+        call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
+                                                                & this%species, this%q0, this%neighbourList,&
+                                                                & this%nNeighbourSK, this%denseDesc%iAtomStart,&
+                                                                & this%iSparseStart, this%img2CentCell)
 
         ! Note: if XLBOMD is active, potential created with input charges is needed later,
         ! therefore it should not be overwritten here.
@@ -3347,6 +3353,7 @@ contains
 
       if (allocated(rhoSqrReal)) then
         rhoSqrReal(:,:,iSpin) = work
+
       end if
     end do
 

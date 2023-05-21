@@ -4761,6 +4761,14 @@ contains
       this%tLargeDenseMatrices = this%tLargeDenseMatrices&
           & .and. .not. this%electronicSolver%elsi%isSparse
     end if
+    
+    ! TODO: debug openmmpol matrix elements
+    ! if (allocated(input%ctrl%openmmpolInput)) then
+      ! this%tLargeDenseMatrices = .true.
+      ! allocate(this%rhoSqrReal(sqrHamSize, sqrHamSize, this%nSpin))
+    ! end if
+    ! end TODO
+
     if (this%tLargeDenseMatrices) then
       call this%allocateDenseMatrices(env)
     end if
@@ -4786,7 +4794,9 @@ contains
         call error("Linear response calc. does not work with MPI yet")
       end if
       if (this%tLinRespZVect) then
-        allocate(this%rhoSqrReal(sqrHamSize, sqrHamSize, this%nSpin))
+        if (.not. allocated(this%rhoSqrReal)) then
+          allocate(this%rhoSqrReal(sqrHamSize, sqrHamSize, this%nSpin))
+        end if
       end if
     end if
 

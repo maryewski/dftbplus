@@ -7982,10 +7982,7 @@ contains
     type(fnode), pointer :: openmmpolHeadNode
     type(fnode), pointer :: openmmpolInputFilesNode
     type(string) :: buffer
-
-  #:if WITH_OPENMMPOL
     type(string), allocatable :: searchPath(:)
-  #:endif
 
     ! Dummy for storing string of current input file
     character(:), allocatable :: inputFileName
@@ -8043,17 +8040,9 @@ contains
           call error("Input file format for openmmpol is not recognized")
 
         end if
-        ! Read filename parameter and look for parameters file;
-        ! if not found, set to default
-        ! call getChildValue(openmmpolNode, "Filename", buffer, default="openmmpol.mmp")
-        ! openmmpolInputFile = unquote(char(buffer))
-        ! call getParamSearchPath(searchPath)
-        ! call findFile(searchPath, openmmpolInputFile, openmmpolInput%filename)
-        ! if (.not. allocated(openmmpolInput%filename)) then
-        !   call error("Could not find openmmpol parameter file '" // openmmpolInputFile // "'")
-        ! endif
-
         ! TODO: add vdW parameters for QM atoms
+
+        
 
         ! Assign solver, set to default if not provided
         call getChildValue(openmmpolHeadNode, "Solver", openmmpSolver, default=1)

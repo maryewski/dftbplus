@@ -176,19 +176,23 @@ contains
 
             !> Since charges are now updated, re-evaluation of
             !  charge-related quantities is requested
+            ! > Compute electric field produced by QM part of the system on MM atoms
+            this%pQMHelper%E_n2p_done = .false. ! Only computes E_n2p (and V_m2n/V_p2n at first call)
+            call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
+            
+            !> Set external field for MM, solve the polarization equations
             this%pSystem%eel%ipd_done = .false.
             this%pSystem%eel%D2mgg_done = .false.
             this%pSystem%eel%D2dgg_done = .false.
-            this%pQMHelper%E_n2p_done = .false.
 
-            ! > Compute electric field produced by QM part of the system on MM atoms
-            call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
-
-            !> Set external field for MM, solve the polarization equations
             call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
 
+            ! > Compute electostatic potential produced by MM+Pol part on QM nucleai
+            this%pQMHelper%V_p2n_done = .false. ! Only computes V_p2n, after having updated the external field / IPDs
+            call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
+
             !> Store external potential for later access
-            this%qmAtomsPotential = this%pQMHelper%V_m2n
+            this%qmAtomsPotential = this%pQMHelper%V_m2n + this%pQMHelper%V_p2n
             this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * this%qmAtomsPotential
             
             !> Debug: prints total QM/MM coupling energy on every step

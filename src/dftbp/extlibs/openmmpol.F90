@@ -28,6 +28,7 @@ module dftbp_extlibs_openmmpol
     use dftbp_dftb_populations, only : getChargePerShell, denseSubtractDensityOfAtoms, mulliken,&
     & denseMulliken, denseBlockMulliken, skewMulliken, getOnsitePopulation, &
     & getAtomicMultipolePopulation
+    use dftbp_dftb_shift, only : addShift
     !> end debug
     implicit none
 
@@ -76,9 +77,9 @@ contains
             this%solver = openmmpolInput%solver
             this%forceFieldEnergy = 0.0_dp
             allocate(this%qmAtomsPotential(nQMatoms))
-            this%qmAtomsPotential(:) = 0.0_dp
+            this%qmAtomsPotential = 0.0_dp
             allocate(this%qmmmCouplingEnergyPerAtom(nQMatoms))
-            this%qmmmCouplingEnergyPerAtom(:) = 0.0_dp
+            this%qmmmCouplingEnergyPerAtom = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
                 call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
@@ -89,7 +90,8 @@ contains
             end if
 
             ! TODO: add verbosity control
-            call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            call ommp_set_verbose(OMMP_VERBOSE_LOW)
             allocate(netCharges(nQMatoms))
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
             deallocate(netCharges)
@@ -168,7 +170,7 @@ contains
             qPerAtom = -qPerAtom
             qSum = sum(qPerAtom)
 
-            ! write(*, *) "Charges in calculation:"
+            ! write(*, *) "MB23 Charges in calculation:"
             ! write(*, *) qPerAtom
             !> Set charges in the helper object
             this%pQMHelper%qqm = qPerAtom 
@@ -176,23 +178,39 @@ contains
 
             !> Since charges are now updated, re-evaluation of
             !  charge-related quantities is requested
+            !> Compute electric field produced by QM part of the system on 
+            !> MM atoms
+            this%pQMHelper%E_n2p_done = .false. 
+            !> Only computes E_n2p (and V_m2n/V_p2n at first call)
+            call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
+            
+            !> Set external field for MM, solve the polarization equations
             this%pSystem%eel%ipd_done = .false.
             this%pSystem%eel%D2mgg_done = .false.
             this%pSystem%eel%D2dgg_done = .false.
-            this%pQMHelper%E_n2p_done = .false.
 
-            ! > Compute electric field produced by QM part of the system on MM atoms
+            call ommp_set_external_field(this%pSystem, &
+                                         this%pQMHelper%E_n2p, &
+                                         this%solver, .true.)
+
+            !> Compute electostatic potential produced by MM+Pol part on QM nuc
+            this%pQMHelper%V_p2n_done = .false. 
+            !> Only computes V_p2n, after having updated the external field/IPDs
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
-            !> Set external field for MM, solve the polarization equations
-            call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
-
             !> Store external potential for later access
-            this%qmAtomsPotential = this%pQMHelper%V_m2n
+            this%qmAtomsPotential = this%pQMHelper%V_m2n + this%pQMHelper%V_p2n
             this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * this%qmAtomsPotential
             
+            ! write(*, *) "MB23 V_m2n:"
+            ! write(*, *) this%pQMHelper%V_m2n
+            ! write(*, *) "MB23 V_p2n:"
+            ! write(*, *) this%pQMHelper%V_p2n
+            ! write(*, *) "MB23 QMMM coup: "
+            ! write(*, *) this%qmmmCouplingEnergyPerAtom
+            
             !> Debug: prints total QM/MM coupling energy on every step
-            ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
+            write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
 
             #:else 
             call notImplementedError
@@ -206,7 +224,7 @@ contains
             real(dp), intent(inout) :: shiftPerAtom(:)
             
             !> Computed shift
-            real(dp), allocatable :: shiftFromOpenmmpol(:)
+            ! real(dp), allocatable :: shiftFromOpenmmpol(:)
 
             #:if WITH_OPENMMPOL
             !> Debug: print charges every time the potential is computed
@@ -281,7 +299,7 @@ contains
             real(dp), allocatable :: dm_perturbed(:, :)
 
             !> Analytical hamiltonian contributions
-            real(dp), allocatable :: h_exact(:)
+            real(dp), allocatable :: h_exact(:, :)
 
             !> Numerical hamiltonian contributions
             real(dp), allocatable :: h_numeric(:)
@@ -302,6 +320,9 @@ contains
             !> perturbed net atom (work)
             real(dp), allocatable :: qPerAtomPerturbed(:)
             !> end of charges
+
+            !> Potential
+            real(dp), allocatable :: potential(:, :)
             
             !> Perturbed polarization energy
             real(dp) :: E_pol_perturbed
@@ -310,7 +331,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Density matrix perturbation step
-            real(dp) :: P_step = 1e-05
+            real(dp) :: P_step = 1e-7
 
             !> Iterator index for the sparse matrix
             integer :: i
@@ -318,15 +339,16 @@ contains
             !> Allocate necessary arrays
             allocate(dm_0, mold=rhoPrim)
             allocate(dm_perturbed, mold=rhoPrim)
-            allocate(h_exact(size(dm_0, dim=1)))
+            allocate(h_exact(size(dm_0, dim=1), 1))
             allocate(h_numeric(size(dm_0, dim=1)))
             allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), 1))
             allocate(qOrb0, mold=qOrbPerturbed)
             allocate(qPerAtom0(size(species)))
             allocate(qPerAtomPerturbed, mold=qPerAtom0)
+            allocate(potential(size(species), 1))
 
             !> Init arrays
-            dm_0 = rhoPrim(:, :) + 0.0_dp
+            dm_0 = rhoPrim + 0.0_dp
             dm_perturbed = 0.0_dp
             h_exact = 0.0_dp
             h_numeric = 0.0_dp
@@ -334,6 +356,7 @@ contains
             qOrb0 = 0.0_dp
             qPerAtom0 = 0.0_dp
             qPerAtomPerturbed = 0.0_dp
+            potential = 0.0_dp
             
             !> Compute the unperturbed population from density matrix
             call getMullikenPopulation(env, dm_0, ints, orb, neighbourList, nNeighbourSK,&
@@ -341,7 +364,7 @@ contains
 
             !> Get QM/MM energy at unperturbed density
             call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
-            write(*, *) this%qmmmCouplingEnergyPerAtom
+
             E_pol_0 = sum(this%qmmmCouplingEnergyPerAtom)
 
             !> Unpack and block symmetrize the overlap matrix
@@ -368,8 +391,8 @@ contains
                 !> Get variational energy for perturbed charges
                 call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0, img2CentCell, orb)
                 !
-                write(*, *) "QM/MM coupling energy per atom:"
-                write(*, *) this%qmmmCouplingEnergyPerAtom
+                ! write(*, *) "QM/MM coupling energy per atom:"
+                ! write(*, *) this%qmmmCouplingEnergyPerAtom
                 !
                 E_pol_perturbed = sum(this%qmmmCouplingEnergyPerAtom)
 
@@ -379,13 +402,27 @@ contains
                 qOrbPerturbed = 0.0_dp
 
             end do
+
+            !> Set small matrix elements to zero
+            h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
             
             !> Print numeric hamiltonian
-            ! write(*, *) "Numeric Fock matrix contribution:"
-            ! write(*, *) h_numeric
+            write(*, *) "Numeric Fock matrix contribution:"
+            write(*, *) h_numeric
             !> Set charges back to initial
             call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+            potential(:, 1) = potential(:, 1) + this%qmAtomsPotential
 
+            !> Compute analytic Fock matrix element
+            call addShift(env, h_exact, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
+                              & species, orb, iSparseStart, size(orb%nOrbAtom), img2CentCell, potential, .false.)
+            h_exact = -h_exact
+            write(*, *) "Analytic Fock matrix contribution:"
+            write(*, *) h_exact(:, 1)
+
+            write(*, *) "Difference between analytic and numeric Fock matrices:"
+            write(*, *) abs(h_exact(:, 1) - h_numeric) * merge(1.0_dp, 0.0_dp, abs(h_exact(:, 1) - h_numeric) >= 1e-10)
+            
             !> Deallocate all temporary arrays
             deallocate(dm_0)
             deallocate(dm_perturbed)
@@ -395,6 +432,7 @@ contains
             deallocate(qOrbPerturbed)
             deallocate(qPerAtom0)
             deallocate(qPerAtomPerturbed)
+            deallocate(potential)
 
             #:if WITH_OPENMMPOL
             #:else 

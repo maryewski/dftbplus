@@ -168,16 +168,18 @@ contains
             qPerAtom = -qPerAtom
             qSum = sum(qPerAtom)
 
-            ! write(*, *) "Charges in calculation:"
-            ! write(*, *) qPerAtom
+            write(*, *) "MB23 Charges in calculation:"
+            write(*, *) qPerAtom
             !> Set charges in the helper object
             this%pQMHelper%qqm = qPerAtom 
             deallocate(qPerAtom)
 
             !> Since charges are now updated, re-evaluation of
             !  charge-related quantities is requested
-            ! > Compute electric field produced by QM part of the system on MM atoms
-            this%pQMHelper%E_n2p_done = .false. ! Only computes E_n2p (and V_m2n/V_p2n at first call)
+            !> Compute electric field produced by QM part of the system on 
+            !> MM atoms
+            this%pQMHelper%E_n2p_done = .false. 
+            !> Only computes E_n2p (and V_m2n/V_p2n at first call)
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
             
             !> Set external field for MM, solve the polarization equations
@@ -185,15 +187,25 @@ contains
             this%pSystem%eel%D2mgg_done = .false.
             this%pSystem%eel%D2dgg_done = .false.
 
-            call ommp_set_external_field(this%pSystem, this%pQMHelper%E_n2p, this%solver, .true.)
+            call ommp_set_external_field(this%pSystem, &
+                                         this%pQMHelper%E_n2p, &
+                                         this%solver, .true.)
 
-            ! > Compute electostatic potential produced by MM+Pol part on QM nucleai
-            this%pQMHelper%V_p2n_done = .false. ! Only computes V_p2n, after having updated the external field / IPDs
+            !> Compute electostatic potential produced by MM+Pol part on QM nuc
+            this%pQMHelper%V_p2n_done = .false. 
+            !> Only computes V_p2n, after having updated the external field/IPDs
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
             !> Store external potential for later access
             this%qmAtomsPotential = this%pQMHelper%V_m2n + this%pQMHelper%V_p2n
             this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * this%qmAtomsPotential
+            
+            write(*, *) "MB23 V_m2n:"
+            write(*, *) this%pQMHelper%V_m2n
+            write(*, *) "MB23 V_p2n:"
+            write(*, *) this%pQMHelper%V_p2n
+            write(*, *) "MB23 QMMM coup: "
+            write(*, *) this%qmmmCouplingEnergyPerAtom
             
             !> Debug: prints total QM/MM coupling energy on every step
             ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"

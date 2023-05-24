@@ -1297,10 +1297,10 @@ contains
         call processOutputCharges(env, this)
 
         if(allocated(this%openmmpolCalc)) then
-          call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
-                                                                  & this%species, this%q0, this%neighbourList,&
-                                                                  & this%nNeighbourSK, this%denseDesc%iAtomStart,&
-                                                                  & this%iSparseStart, this%img2CentCell)
+          ! call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
+                                                                  ! & this%species, this%q0, this%neighbourList,&
+                                                                  ! & this%nNeighbourSK, this%denseDesc%iAtomStart,&
+                                                                  ! & this%iSparseStart, this%img2CentCell)
         end if
 
         ! Note: if XLBOMD is active, potential created with input charges is needed later,

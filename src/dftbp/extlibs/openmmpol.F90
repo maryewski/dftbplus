@@ -90,9 +90,10 @@ contains
             end if
 
             ! TODO: add verbosity control
-            ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
-            call ommp_set_verbose(OMMP_VERBOSE_LOW)
+            call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            ! call ommp_set_verbose(OMMP_VERBOSE_LOW)
             allocate(netCharges(nQMatoms))
+            netCharges = 0.0_dp
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
             deallocate(netCharges)
             #:else 
@@ -104,8 +105,9 @@ contains
         subroutine TOMMPInterface_terminate(this)
             type(TOMMPInterface), intent(out) :: this
             #:if WITH_OPENMMPOL
-            call ommp_terminate(this%pSystem)
             call ommp_terminate_qm_helper(this%pQMHelper)
+            call ommp_terminate(this%pSystem)
+            ! call ommp_terminate_qm_helper(this%pQMHelper)
             !> TODO: why do those deallocations cause segfault?
             ! deallocate(this%qmAtomsPotential)
             ! deallocate(this%qmmmCouplingEnergyPerAtom)
@@ -157,9 +159,6 @@ contains
             !> Charge per atom (internal variable)
             real(dp), allocatable :: qPerAtom(:)
 
-            !> Sum of charges supplied to the solver (internal variable)
-            real(dp) :: qSum
-
             #:if WITH_OPENMMPOL
 
             allocate(qPerAtom(size(species)))
@@ -168,13 +167,11 @@ contains
             !  multiply by -1 to get correct charge sign
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=qPerAtom)
             qPerAtom = -qPerAtom
-            qSum = sum(qPerAtom)
 
             ! write(*, *) "MB23 Charges in calculation:"
             ! write(*, *) qPerAtom
             !> Set charges in the helper object
             this%pQMHelper%qqm = qPerAtom 
-            deallocate(qPerAtom)
 
             !> Since charges are now updated, re-evaluation of
             !  charge-related quantities is requested
@@ -199,8 +196,10 @@ contains
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
             !> Store external potential for later access
-            this%qmAtomsPotential = this%pQMHelper%V_m2n + this%pQMHelper%V_p2n
-            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * this%qmAtomsPotential
+            this%qmAtomsPotential = -(this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
+            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
+            
+            deallocate(qPerAtom)
             
             ! write(*, *) "MB23 V_m2n:"
             ! write(*, *) this%pQMHelper%V_m2n
@@ -404,7 +403,7 @@ contains
             end do
 
             !> Set small matrix elements to zero
-            h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
+            ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
             
             !> Print numeric hamiltonian
             write(*, *) "Numeric Fock matrix contribution:"
@@ -416,7 +415,7 @@ contains
             !> Compute analytic Fock matrix element
             call addShift(env, h_exact, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
                               & species, orb, iSparseStart, size(orb%nOrbAtom), img2CentCell, potential, .false.)
-            h_exact = -h_exact
+            ! h_exact = -h_exact
             write(*, *) "Analytic Fock matrix contribution:"
             write(*, *) h_exact(:, 1)
 

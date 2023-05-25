@@ -23,12 +23,13 @@ module dftbp_extlibs_openmmpol
     use dftbp_common_accuracy, only : dp
     !> debug
     use dftbp_type_integral, only : TIntegral
-    use dftbp_dftb_sparse2dense, only : unpackHS, blockSymmetrizeHS
+    use dftbp_dftb_sparse2dense, only : unpackHS, blockSymmetrizeHS, symmetrizeHS
     use dftbp_type_multipole, only : TMultipole
     use dftbp_dftb_populations, only : getChargePerShell, denseSubtractDensityOfAtoms, mulliken,&
     & denseMulliken, denseBlockMulliken, skewMulliken, getOnsitePopulation, &
     & getAtomicMultipolePopulation
     use dftbp_dftb_shift, only : addShift
+    use dftbp_type_densedescr, only : TDenseDescr
     !> end debug
     implicit none
 
@@ -90,8 +91,8 @@ contains
             end if
 
             ! TODO: add verbosity control
-            call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
-            ! call ommp_set_verbose(OMMP_VERBOSE_LOW)
+            ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            call ommp_set_verbose(OMMP_VERBOSE_LOW)
             allocate(netCharges(nQMatoms))
             netCharges = 0.0_dp
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
@@ -103,7 +104,7 @@ contains
         end subroutine
 
         subroutine TOMMPInterface_terminate(this)
-            type(TOMMPInterface), intent(out) :: this
+            type(TOMMPInterface), intent(inout) :: this
             #:if WITH_OPENMMPOL
             call ommp_terminate_qm_helper(this%pQMHelper)
             call ommp_terminate(this%pSystem)
@@ -153,7 +154,7 @@ contains
             !> Mapping on atoms in central cell.
             integer, intent(in) :: img2CentCell(:)
       
-            !>> Orbital information
+            !> Orbital information
             type(TOrbitals), intent(in) :: orb
 
             !> Charge per atom (internal variable)
@@ -163,8 +164,8 @@ contains
 
             allocate(qPerAtom(size(species)))
 
-            !> getSummedCharges computes population, necessary to
-            !  multiply by -1 to get correct charge sign
+            !> DFTB+ internally uses charges and potential that are opposite to the chemical
+            !  convention; therefore, when operating with 
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=qPerAtom)
             qPerAtom = -qPerAtom
 
@@ -198,7 +199,7 @@ contains
             !> Store external potential for later access
             this%qmAtomsPotential = -(this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
             this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
-            
+
             deallocate(qPerAtom)
             
             ! write(*, *) "MB23 V_m2n:"
@@ -256,7 +257,7 @@ contains
         end subroutine
 
         subroutine testNumericalMatrixElementsDebug(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
-                                                 & iAtomStart, iSparseStart, img2CentCell)
+                                                 & iAtomStart, iSparseStart, img2CentCell, denseDesc)
             class(TOMMPInterface) :: this
 
             ! ARGUMENTS:
@@ -285,7 +286,7 @@ contains
             integer, intent(in) :: iAtomStart(:)
             integer, intent(in) :: iSparseStart(:, :)
             integer, intent(in) :: img2CentCell(:)
-            ! integer, intent(in) :: sqrHamSize
+            type(TDenseDescr), intent(in) :: denseDesc
 
             ! INTERNAL VARIABLES:
             !> Imaginary component for the density matrix (do not allocate!)
@@ -302,6 +303,9 @@ contains
 
             !> Numerical hamiltonian contributions
             real(dp), allocatable :: h_numeric(:)
+
+            !> Dense work array (for printing etc)
+            real(dp), allocatable :: dense_work(:, :)
 
             !> Charges:
             !> perturbed orbital (work)
@@ -330,7 +334,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Density matrix perturbation step
-            real(dp) :: P_step = 1e-7
+            real(dp) :: P_step = 1e-5
 
             !> Iterator index for the sparse matrix
             integer :: i
@@ -345,6 +349,7 @@ contains
             allocate(qPerAtom0(size(species)))
             allocate(qPerAtomPerturbed, mold=qPerAtom0)
             allocate(potential(size(species), 1))
+            allocate(dense_work(denseDesc%fullSize, denseDesc%fullSize))
 
             !> Init arrays
             dm_0 = rhoPrim + 0.0_dp
@@ -402,25 +407,51 @@ contains
 
             end do
 
+            !> Set charges back to initial
+            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+
+            !> Get potential
+            call this%addPotential(potential(:, 1))
+
+            !> Compute analytic Fock matrix element
+            call addShift(env, h_exact, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
+                              & species, orb, iSparseStart, size(orb%nOrbAtom), img2CentCell, potential, .true.)
+
+            !> Build and symmetrize analytic Fock matrix in dense form, then write
+            call unpackHS(dense_work, h_exact(:, 1), neighbourList%iNeighbour, nNeighbourSK, iAtomStart, iSparseStart, img2CentCell)
+            call symmetrizeHS(dense_work)
+            call write_array_newfile(dense_work, "qmmm_fock_analytic.txt")
+            dense_work = 0.0_dp
+
+            !> Build and symmetrize numeric Fock matrix in dense form, then write
+            call unpackHS(dense_work, h_numeric(:), neighbourList%iNeighbour, nNeighbourSK, iAtomStart, iSparseStart, img2CentCell)
+            call symmetrizeHS(dense_work)
+            call write_array_newfile(dense_work, "qmmm_fock_numeric.txt")
+            dense_work = 0.0_dp
+
+            !> Build and symmetrize absolute difference of two Fock matrices in dense form, then write
+            call unpackHS(dense_work, abs(h_numeric(:) - h_exact(:, 1)), neighbourList%iNeighbour, &
+                        & nNeighbourSK, iAtomStart, iSparseStart, img2CentCell)
+            call symmetrizeHS(dense_work)
+            call write_array_newfile(dense_work, "qmmm_fock_difference.txt")
+            dense_work = 0.0_dp
+
             !> Set small matrix elements to zero
             ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
             
             !> Print numeric hamiltonian
             write(*, *) "Numeric Fock matrix contribution:"
             write(*, *) h_numeric
-            !> Set charges back to initial
-            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
-            potential(:, 1) = potential(:, 1) + this%qmAtomsPotential
+            write(*, *) "\n"
 
-            !> Compute analytic Fock matrix element
-            call addShift(env, h_exact, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
-                              & species, orb, iSparseStart, size(orb%nOrbAtom), img2CentCell, potential, .false.)
-            ! h_exact = -h_exact
             write(*, *) "Analytic Fock matrix contribution:"
             write(*, *) h_exact(:, 1)
+            write(*, *) "\n"
 
             write(*, *) "Difference between analytic and numeric Fock matrices:"
-            write(*, *) abs(h_exact(:, 1) - h_numeric) * merge(1.0_dp, 0.0_dp, abs(h_exact(:, 1) - h_numeric) >= 1e-10)
+            ! write(*, *) abs(h_exact(:, 1) - h_numeric) * merge(1.0_dp, 0.0_dp, abs(h_exact(:, 1) - h_numeric) >= 1e-10)
+            write(*, *) abs(h_exact(:, 1) - h_numeric)
+            write(*, *) "\n"
             
             !> Deallocate all temporary arrays
             deallocate(dm_0)
@@ -432,6 +463,7 @@ contains
             deallocate(qPerAtom0)
             deallocate(qPerAtomPerturbed)
             deallocate(potential)
+            deallocate(dense_work)
 
             #:if WITH_OPENMMPOL
             #:else 
@@ -533,7 +565,30 @@ contains
             end if
       
           end if
-      
+
         end subroutine getMullikenPopulation
+
+        subroutine write_array_newfile(array, name)
+            real(dp), allocatable, intent(in) :: array(:, :)
+            character(len=*), intent(in) :: name
+
+            !> IO identifier
+            integer :: io
+
+            !> Array iterator
+            integer :: i
+
+            !> Open file for write
+            open(newunit=io, file=name, status="replace", action="write")
+
+            do i = 1, size(array, dim=1)
+                write(io, *) array(i, :), ''
+            end do
+
+            !> Close file
+            close(io)
+
+        end subroutine write_array_newfile
+
 end module
 

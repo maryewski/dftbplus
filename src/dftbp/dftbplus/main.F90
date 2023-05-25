@@ -352,10 +352,6 @@ contains
       call TPlumedCalc_final(this%plumedCalc)
     end if
 
-    if (allocated(this%openmmpolCalc)) then
-      call TOMMPInterface_terminate(this%openmmpolCalc)
-    end if
-
     tGeomEnd = this%tMD .or. tGeomEnd .or. this%tDerivs
 
     if (env%tGlobalLead) then
@@ -581,6 +577,10 @@ contains
       call TNegfInt_final(this%negfInt)
     end if
   #:endif
+
+  if (allocated(this%openmmpolCalc)) then
+    call TOMMPInterface_terminate(this%openmmpolCalc)
+  end if
 
   end subroutine runDftbPlus
 
@@ -1297,10 +1297,11 @@ contains
         call processOutputCharges(env, this)
 
         if(allocated(this%openmmpolCalc)) then
-          ! call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
-                                                                  ! & this%species, this%q0, this%neighbourList,&
-                                                                  ! & this%nNeighbourSK, this%denseDesc%iAtomStart,&
-                                                                  ! & this%iSparseStart, this%img2CentCell)
+          call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
+                                                                  & this%species, this%q0, this%neighbourList,&
+                                                                  & this%nNeighbourSK, this%denseDesc%iAtomStart,&
+                                                                  & this%iSparseStart, this%img2CentCell, &
+                                                                  & this%denseDesc)
         end if
 
         ! Note: if XLBOMD is active, potential created with input charges is needed later,

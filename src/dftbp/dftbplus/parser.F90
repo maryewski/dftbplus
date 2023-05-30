@@ -8040,12 +8040,11 @@ contains
           call error("Input file format for openmmpol is not recognized")
 
         end if
+
         ! TODO: add vdW parameters for QM atoms
 
-        
-
         ! Assign solver, set to default if not provided
-        call getChildValue(openmmpolHeadNode, "Solver", openmmpSolver, default=1)
+        call getChildValue(openmmpolInputFilesNode, "Solver", openmmpSolver, default=3)
         openmmpolInput%solver = openmmpSolver
     #:else
       call detailedError(openmmpolHeadNode, "openmmpol calculation requested, but DFTB+ was not compiled with openmmpol support.")

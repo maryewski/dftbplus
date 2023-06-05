@@ -166,6 +166,7 @@ contains
 
             !> Compute electric field produced by QM part of the system on MM atoms
             this%pQMHelper%E_n2p_done = .false. 
+
             !> Only computes E_n2p (and V_m2n/V_p2n at first call)
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
             
@@ -187,13 +188,6 @@ contains
             !> Store external potential for later access
             this%qmAtomsPotential = -(this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
             this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
-            
-            ! write(*, *) "MB23 V_m2n:"
-            ! write(*, *) this%pQMHelper%V_m2n
-            ! write(*, *) "MB23 V_p2n:"
-            ! write(*, *) this%pQMHelper%V_p2n
-            ! write(*, *) "MB23 QMMM coup: "
-            ! write(*, *) this%qmmmCouplingEnergyPerAtom
             
             !> Debug: prints total QM/MM coupling energy on every step
             write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
@@ -293,19 +287,41 @@ contains
             !> Unperturbed orbital (work)
             real(dp), allocatable :: qOrb0(:, :, :)
 
-            !> Potential
+            !> Potential for exact matrix element evaluation
             real(dp), allocatable :: potential(:, :)
-            
+
+            !> Atomic potential (unperturbed)
+            real(dp), allocatable :: potential_0(:)
+
+            !> Atomic potential (perturbed)
+            real(dp), allocatable :: potential_perturbed(:)
+
+            !> Atomic potential Jacobian
+            real(dp), allocatable :: dVdq(:, :)
+
+            !> Atomic onsite charge (perturbed)
+            real(dp), allocatable :: qAtom0(:)
+
+            !> Atomic onsite charge (perturbed)
+            real(dp), allocatable :: qAtomPerturbed(:)
+
+            !> J*q, product of potential-charge Jacobian matrix with a vector
+            !> of charges
+            real(dp), allocatable :: Jq(:)
+
+            !> Polarization contribution to the Fock matrix
+            ! real(dp), allocatable :: h_polar(:, :)
+
             !> Perturbed polarization energy (work)
             real(dp) :: E_pol_perturbed
 
             !> Polarization energy on the unperturbed density matrix
             real(dp) :: E_pol_0
 
-            !> Density matrix perturbation step
-            real(dp) :: P_step = 1e-5_dp
+            !> Numerical differention step
+            real(dp), parameter :: diff_step = 1e-7_dp
 
-            !> Iterator index for rank 2 martrices
+            !> Iterator indices for rank 2 martrices
             integer :: i, j
 
             !> Number of spins in the system
@@ -314,7 +330,14 @@ contains
             !> Iterator index for spins
             integer :: iSpin
 
+            !> Number of atoms in the system
+            integer :: nAtoms
+
+            !> Derivative factor
+            real(dp) :: derFactor = 1.0_dp
+
             nSpin = size(rhoPrim, dim=2)
+            nAtoms = size(species)
 
             !> Allocate and initialize unperturbed density matrix
             allocate(dm_0(denseDesc%fullSize, denseDesc%fullSize, nSpin))
@@ -332,17 +355,29 @@ contains
             allocate(h_exact, mold=dm_0)
             allocate(h_numeric, mold=dm_0)
             allocate(h_exact_sparse, mold=rhoPrim)
+            ! allocate(h_polar, mold=dm_0)
             h_exact = 0.0_dp
             h_numeric = 0.0_dp
             h_exact_sparse = 0.0_dp
+            ! h_polar = 0.0_dp
 
-            !> Allocate and initialize charges
+            !> Allocate and initialize charges and potentials
             allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), 1))
             allocate(qOrb0, mold=qOrbPerturbed)
-            allocate(potential(size(species), 1))
+            allocate(qAtom0(nAtoms))
+            allocate(qAtomPerturbed, mold=qAtom0)
+            allocate(potential(nAtoms, 1))
+            allocate(potential_0(nAtoms))
+            allocate(potential_perturbed, mold=potential_0)
+            allocate(Jq(nAtoms))
             qOrb0 = 0.0_dp
             qOrbPerturbed = 0.0_dp
             potential = 0.0_dp
+            qAtom0 = 0.0_dp
+            qAtomPerturbed = 0.0_dp
+            potential_0 = 0.0_dp
+            potential_perturbed = 0.0_dp
+            Jq = 0.0_dp
 
             !> Make dense overlap matrix
             allocate(overlap_dense(denseDesc%fullSize, denseDesc%fullSize))
@@ -351,7 +386,11 @@ contains
                         & denseDesc%iAtomStart, iSparseStart, img2CentCell)
             call symmetrizeHS(overlap_dense)
 
-            !> Debug
+            !> Init potential Jacobian
+            allocate(dVdq(nAtoms, nAtoms))
+            dVdq = 0.0_dp
+
+            !> Debug: write overlap and unperturbed density matrices
             call write_array_newfile(overlap_dense, "overlap.txt")
             call write_array_newfile(dm_0(:, :, 1), "dm.txt")
 
@@ -364,13 +403,37 @@ contains
             !> Compute QM/MM coupling energy at unpertubed density matrix
             E_pol_0 = sum(this%qmmmCouplingEnergyPerAtom)
 
+            !> Store unperturbed atomic charges
+            call getSummedCharges(species, orb, qOrb0, q0=q0, dQAtom=qAtom0)
+
+            !> Compute atomic potential Jacobian through numeric differentiation
+            !> i = potential on i-th atom
+            !> j = derivative with respect to charge on j-th atom
+            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+            call this%addPotential(potential_0)
+            do j = 1, nAtoms
+                potential_perturbed = 0.0_dp
+                qOrbPerturbed = qOrb0
+                qOrbPerturbed(1, j, 1) = qOrbPerturbed(1, j, 1) + diff_step 
+                call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0, img2CentCell, orb)
+                call this%addPotential(potential_perturbed)
+                dVdq(:, j) = (potential_perturbed - potential_0) / diff_step
+            end do
+            qOrbPerturbed = 0.0_dp
+
             !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
             do iSpin = 1, nSpin
-                do j = 1, size(dm_0, 2)
-                    do i = 1, size(dm_0, 1)
+                do j = 1, denseDesc%fullSize
+                    do i = 1, denseDesc%fullSize
                         !> Construct perturbed density matrix
                         dm_perturbed = dm_0
-                        dm_perturbed(i, j, iSpin) = dm_perturbed(i, j, iSpin) + P_step
+                        dm_perturbed(i, j, iSpin) = dm_perturbed(i, j, iSpin) + diff_step
+                        if (i /= j) then
+                            dm_perturbed(j, i, iSpin) = dm_perturbed(j, i, iSpin) + diff_step 
+                            derFactor = 0.5_dp
+                        else
+                            derFactor = 1.0_dp
+                        end if
                         
                         !> Compute charges from perturbed density matrix
                         call denseBlockMullikenFullMatrix(dm_perturbed, overlap_dense, denseDesc%iAtomStart, qOrbPerturbed)
@@ -380,9 +443,8 @@ contains
                         E_pol_perturbed = sum(this%qmmmCouplingEnergyPerAtom)
         
                         !> Evaluate numerical Fock matrix element
-                        h_numeric(i, j, iSpin) = (E_pol_perturbed - E_pol_0) / P_step
-        
-                        qOrbPerturbed = 0.0_dp
+                        h_numeric(i, j, iSpin) = derFactor * (E_pol_perturbed - E_pol_0) / diff_step
+
                     end do
                 end do
             end do
@@ -390,8 +452,14 @@ contains
             !> Set charges back to initial
             call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
 
-            !> Get potential
+            !> Evaluate Jq
+            Jq = matmul(dVdq, qAtom0)
+
+            !> Get analytical potential (so far without dV/dq polarization contribution)
             call this%addPotential(potential(:, 1))
+
+            !> OPTIONAL: add polarization contribution
+            potential(:, 1) = potential(:, 1) + Jq 
 
             !> Compute analytic Fock matrix element
             call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
@@ -413,22 +481,30 @@ contains
             !> Write difference matrix
             call write_array_newfile(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)), "qmmm_fock_difference.txt")
 
+            !> Write atomic potential Jacobian
+            call write_array_newfile(dVdq, "dVdq_jacobian.txt")
+            
             !> Set small matrix elements to zero
             ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
-            
+
+            ! !> Print potential Jacobian
+            ! write(*, *) "Numeric atomic potential Jacobian:"
+            ! write(*, *) dVdq
+            ! write(*, *) "\n"
+
             !> Print numeric hamiltonian
-            write(*, *) "Numeric Fock matrix contribution:"
-            write(*, *) h_numeric(:, :, 1)
-            write(*, *) "\n"
+            ! write(*, *) "Numeric Fock matrix contribution:"
+            ! write(*, *) h_numeric(:, :, 1)
+            ! write(*, *) "\n"
 
-            write(*, *) "Analytic Fock matrix contribution:"
-            write(*, *) h_exact(:, :, 1)
-            write(*, *) "\n"
+            ! write(*, *) "Analytic Fock matrix contribution:"
+            ! write(*, *) h_exact(:, :, 1)
+            ! write(*, *) "\n"
 
-            write(*, *) "Difference between analytic and numeric Fock matrices:"
+            ! write(*, *) "Difference between analytic and numeric Fock matrices:"
             ! write(*, *) abs(h_exact(:, 1) - h_numeric) * merge(1.0_dp, 0.0_dp, abs(h_exact(:, 1) - h_numeric) >= 1e-10)
-            write(*, *) abs(h_exact(:, :, 1) - h_numeric(:, :, 1))
-            write(*, *) "\n"
+            ! write(*, *) abs(h_exact(:, :, 1) - h_numeric(:, :, 1))
+            ! write(*, *) "\n"
             
             !> Deallocate all temporary arrays
             deallocate(dm_0)
@@ -437,8 +513,13 @@ contains
             deallocate(h_numeric)
             deallocate(qOrb0)
             deallocate(qOrbPerturbed)
+            deallocate(qAtom0)
+            deallocate(qAtomPerturbed)
+            deallocate(dVdq)
             deallocate(potential)
             deallocate(overlap_dense)
+            deallocate(Jq)
+            ! deallocate(h_polar)
 
             #:if WITH_OPENMMPOL
             #:else 

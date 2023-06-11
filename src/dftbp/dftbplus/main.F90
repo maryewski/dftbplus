@@ -1296,13 +1296,6 @@ contains
 
         call processOutputCharges(env, this)
 
-        if(allocated(this%openmmpolCalc)) then
-          call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
-                                                                  & this%species, this%q0, this%neighbourList,&
-                                                                  & this%nNeighbourSK, this%iSparseStart,&
-                                                                  & this%img2CentCell, this%denseDesc)
-        end if
-
         ! Note: if XLBOMD is active, potential created with input charges is needed later,
         ! therefore it should not be overwritten here.
         if (.not.this%isXlbomd) then
@@ -1331,10 +1324,17 @@ contains
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%atomDisp,&
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%Edisp, this%iAtInCentralRegion)
         end if
-
+        
         call sumEnergies(this%dftbEnergy(this%deltaDftb%iDeterminant))
 
         call sccLoopWriting(this, iGeoStep, iLatGeoStep, iSccIter, diffElec, sccErrorQ)
+
+        if(allocated(this%openmmpolCalc)) then
+          call this%openmmpolCalc%bigMatrixElementDebugTest(env, this%rhoPrim, this%ints, this%orb,&
+                                                                  & this%species, this%q0, this%neighbourList,&
+                                                                  & this%nNeighbourSK, this%iSparseStart,&
+                                                                  & this%img2CentCell, this%denseDesc)
+        end if
 
         if (tConverged .or. tStopScc) then
           exit lpSCC

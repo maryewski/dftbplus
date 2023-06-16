@@ -255,12 +255,11 @@ contains
       if (.not. isFirstCallInLoop) then
         call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
       end if
-      ! call openmmpolCalc%updateQMCharges(env, pSpecies0, neighbourList, qInput, q0, img2CentCell, orb)
-      call openmmpolCalc%addPotential(atomPot(:, 1))
-      !> TODO: implement analytical K-vector
-      ! call openmmpolCalc%addKVectorNumeric(atomPot(:, 1), qInput, q0, env, pSpecies0,&
-                                        !  & neighbourList, img2CentCell, orb)
-      
+      ! call openmmpolCalc%addFockMatrixPotential(atomPot(:, 1))
+      !> DEBUG: numerical K-vector contribution
+      call openmmpolCalc%addFockMatrixPotential(atomPot(:, 1), qInput, q0, env, &
+                                              & pSpecies0, neighbourList, img2CentCell, orb)
+
     end if
 
     potential%intAtom(:,1) = potential%intAtom(:,1) + atomPot(:,1)

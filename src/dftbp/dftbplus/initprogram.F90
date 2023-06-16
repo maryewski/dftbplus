@@ -1553,8 +1553,9 @@ contains
 
     call initReferencePopulation_(input, this%orb, this%hamiltonianType, this%referenceN0)
 
-    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms) &
-                            .or. allocated(input%ctrl%openmmpolInput)
+    ! this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms) &
+                            ! .or. allocated(input%ctrl%openmmpolInput)
+    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms)
                             
     call initReferenceCharges(this%species0, this%orb, this%referenceN0, this%nSpin, this%q0,&
         & this%qShell0, input%ctrl%customOccAtoms, input%ctrl%customOccFillings)

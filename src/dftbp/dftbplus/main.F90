@@ -1304,6 +1304,13 @@ contains
               & this%qBlockOut, this%qiBlockOut)
         end if
 
+        if (allocated(this%openmmpolCalc)) then
+          call this%openmmpolCalc%bigMatrixElementDebugTest(env, this%rhoPrim, this%ints, this%orb,&
+                                                                  & this%species, this%q0, this%neighbourList,&
+                                                                  & this%nNeighbourSK, this%iSparseStart,&
+                                                                  & this%img2CentCell, this%denseDesc)
+        end if
+
         call calcEnergies(env, this%scc, this%tblite, this%qOutput, this%q0, this%chargePerShell,&
             & this%multipoleOut, this%species, this%isExtField, this%isXlbomd, this%dftbU,&
             & this%tDualSpinOrbit, this%rhoPrim, this%H0, this%orb, this%neighbourList,&
@@ -1328,13 +1335,6 @@ contains
         call sumEnergies(this%dftbEnergy(this%deltaDftb%iDeterminant))
 
         call sccLoopWriting(this, iGeoStep, iLatGeoStep, iSccIter, diffElec, sccErrorQ)
-
-        if(allocated(this%openmmpolCalc)) then
-          call this%openmmpolCalc%bigMatrixElementDebugTest(env, this%rhoPrim, this%ints, this%orb,&
-                                                                  & this%species, this%q0, this%neighbourList,&
-                                                                  & this%nNeighbourSK, this%iSparseStart,&
-                                                                  & this%img2CentCell, this%denseDesc)
-        end if
 
         if (tConverged .or. tStopScc) then
           exit lpSCC

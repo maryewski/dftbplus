@@ -25,9 +25,7 @@ module dftbp_extlibs_openmmpol
     use dftbp_type_integral, only : TIntegral
     use dftbp_dftb_sparse2dense, only : unpackHS, blockSymmetrizeHS, symmetrizeHS
     use dftbp_type_multipole, only : TMultipole
-    use dftbp_dftb_populations, only : getChargePerShell, denseSubtractDensityOfAtoms, mulliken,&
-    & denseMulliken, denseBlockMulliken, skewMulliken, getOnsitePopulation, &
-    & getAtomicMultipolePopulation
+    use dftbp_dftb_populations, only : mulliken
     use dftbp_dftb_shift, only : addShift
     use dftbp_type_densedescr, only : TDenseDescr
     !> end debug
@@ -42,15 +40,19 @@ module dftbp_extlibs_openmmpol
     #:endif
 
         integer :: solver
+        ! real(dp) :: qmmmCouplingEnergy
         real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
-        real(dp), allocatable :: qmAtomsPotential(:)
+        real(dp), allocatable :: atomPotConst(:)
+        real(dp), allocatable :: atomPotPolarizable(:)
         real(dp) :: forceFieldEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
         procedure :: addAtomEnergies
-        procedure :: addPotential
+        procedure :: addFockMatrixPotential
+        procedure :: addTotalEnergyPotential
         procedure :: bigMatrixElementDebugTest
+        procedure :: addKVectorNumeric
         ! procedure :: addGradients
     end type
 
@@ -77,10 +79,12 @@ contains
             #:if WITH_OPENMMPOL
             this%solver = openmmpolInput%solver
             this%forceFieldEnergy = 0.0_dp
-            allocate(this%qmAtomsPotential(nQMatoms))
-            this%qmAtomsPotential = 0.0_dp
             allocate(this%qmmmCouplingEnergyPerAtom(nQMatoms))
             this%qmmmCouplingEnergyPerAtom = 0.0_dp
+            allocate(this%atomPotConst(nQMatoms))
+            this%atomPotConst = 0.0_dp
+            allocate(this%atomPotPolarizable(nQMatoms))
+            this%atomPotPolarizable = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
                 call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
@@ -91,8 +95,8 @@ contains
             end if
 
             ! TODO: add verbosity control
-            ! call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
-            call ommp_set_verbose(OMMP_VERBOSE_LOW)
+            call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
+            ! call ommp_set_verbose(OMMP_VERBOSE_LOW)
             allocate(netCharges(nQMatoms))
             netCharges = 0.0_dp
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
@@ -108,16 +112,16 @@ contains
             #:if WITH_OPENMMPOL
             call ommp_terminate_qm_helper(this%pQMHelper)
             call ommp_terminate(this%pSystem)
-            !> TODO: why do those deallocations cause segfault?
-            ! deallocate(this%qmAtomsPotential)
-            ! deallocate(this%qmmmCouplingEnergyPerAtom)
+            deallocate(this%qmmmCouplingEnergyPerAtom)
+            deallocate(this%atomPotConst)
+            deallocate(this%atomPotPolarizable)
             #:else 
             call notImplementedError
             #:endif
         end subroutine
 
         subroutine updateQMCoords(this)
-            class(TOMMPInterface), intent(inout) :: this
+            class(TOMMPInterface) :: this
 
             #:if WITH_OPENMMPOL
             !> TODO: to be cleared
@@ -133,7 +137,7 @@ contains
         end subroutine
 
         subroutine updateQMCharges(this, env, species, neighList, qq, q0, img2CentCell, orb)
-            class(TOMMPInterface), intent(inout) :: this
+            class(TOMMPInterface):: this
 
             !> Computational environment settings
             type(TEnvironment), intent(in) :: env
@@ -162,6 +166,8 @@ contains
             !  convention, therefore we need a sign inversion when passing them to openmmpol
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=this%pQMHelper%qqm)
             this%pQMHelper%qqm = -this%pQMHelper%qqm
+            ! write(*, *) "Charge supplied:"
+            ! write(*, *) this%pQMHelper%qqm
 
             !> Compute electric field produced by QM part of the system on MM atoms
             this%pQMHelper%E_n2p_done = .false. 
@@ -178,20 +184,19 @@ contains
                                          this%pQMHelper%E_n2p, &
                                          this%solver, .true.)
 
-            !> Compute electostatic potential produced by MM+Pol part on QM nuc
+            !> Compute electostatic potential produced by MM+Pol part on QM nuclei
             this%pQMHelper%V_p2n_done = .false. 
 
             !> Only computes V_p2n, after having updated the external field/IPDs
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
-            !> Store external potential for later access
-            this%qmAtomsPotential = -(this%pQMHelper%V_m2n + 2*this%pQMHelper%V_p2n)
-            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n)
-            
-            write(*, *) "Constant potential:"
-            write(*, *) this%pQMHelper%V_m2n
-            write(*, *) "Polarization potential:"
-            write(*, *) this%pQMHelper%V_p2n
+            !> Store computed potential on QM atoms
+            this%atomPotConst = -this%pQMHelper%V_m2n
+            this%atomPotPolarizable = -this%pQMHelper%V_p2n
+            !> Store coupling energy
+            ! this%qmmmCouplingEnergyPerAtom = 0.5_dp * (this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n))
+            this%qmmmCouplingEnergyPerAtom = (this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n))
+
             !> Debug: prints total QM/MM coupling energy on every step
             write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
 
@@ -200,7 +205,54 @@ contains
             #:endif
         end subroutine
 
-        subroutine addPotential(this, shiftPerAtom)
+        subroutine addFockMatrixPotential(this, shiftPerAtom, qq, q0, env, species,&
+                                        & neighbourList, img2CentCell, orb)
+
+            class(TOMMPInterface):: this
+
+            !> Computed potential is added to this vector
+            real(dp), intent(inout) :: shiftPerAtom(:)
+
+            !> Orbital-resolved Mulliken population
+            real(dp), intent(in) :: qq(:, :, :)
+
+            !> Reference orbital-resolved Mulliken population
+            real(dp), intent(in) :: q0(:, :, :)
+
+            !> Environment class
+            type(TEnvironment), intent(in) :: env
+
+            !> Species vector
+            integer, intent(in) :: species(:)
+
+            !> Neighbour list class
+            type(TNeighbourList), intent(in) :: neighbourList
+
+            !> Image-to-central-cell mapping
+            integer, intent(in) :: img2CentCell(:)
+
+            !> Orbital information class
+            type(TOrbitals), intent(in) :: orb
+
+            #:if WITH_OPENMMPOL
+
+            !> Add potential from openmmpol to the vector of potentials
+            ! shiftPerAtom = shiftPerAtom  + (this%atomPotConst + 2.0_dp * this%atomPotPolarizable)
+            ! TODO: why the factor of 0.5?
+            ! shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2 * this%atomPotPolarizable)
+
+            !> DEBUG: numeric K-vector potential
+            call this%addTotalEnergyPotential(shiftPerAtom)
+            call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
+                                      & neighbourList, img2CentCell, orb)
+
+            #:else 
+            call notImplementedError
+            #:endif
+
+        end subroutine
+
+        subroutine addTotalEnergyPotential(this, shiftPerAtom)
             class(TOMMPInterface) :: this
 
             !> Computed potential is added to this vector
@@ -209,13 +261,13 @@ contains
             #:if WITH_OPENMMPOL
 
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom + this%qmAtomsPotential
+            shiftPerAtom = shiftPerAtom + (this%atomPotConst + this%atomPotPolarizable)
 
             #:else 
             call notImplementedError
             #:endif
-
-        end subroutine
+            
+        end subroutine addTotalEnergyPotential
 
         subroutine addAtomEnergies(this, energyArray)
             class(TOMMPInterface) :: this
@@ -225,13 +277,99 @@ contains
 
             #:if WITH_OPENMMPOL
             !> Write energy per atom (charge Q * potential V)
-            ! @:ASSERT (size(energyArray) == size(this%qmAtomsPotential))
             ! energyArray = energyArray + this%pQMHelper%qqm * this%pQMHelper%V_m2n
             #:else 
             call notImplementedError
             #:endif
 
         end subroutine
+
+        subroutine addKVectorNumeric(this, shift, qq, q0, env, species, neighbourList, img2CentCell, orb)
+            class(TOMMPInterface), intent(in) :: this
+
+            !> Vector to add K-vector shift to
+            real(dp), intent(inout) ::  shift(:)
+
+            !> Orbital-resolved Mulliken population
+            real(dp), intent(in) :: qq(:, :, :)
+
+            !> Reference orbital-resolved Mulliken population
+            real(dp), intent(in) :: q0(:, :, :)
+
+            !> Environment class
+            type(TEnvironment), intent(in) :: env
+
+            !> Species vector
+            integer, intent(in) :: species(:)
+
+            !> Neighbour list class
+            type(TNeighbourList), intent(in) :: neighbourList
+
+            !> Image-to-central-cell mapping
+            integer, intent(in) :: img2CentCell(:)
+
+            !> Orbital information class
+            type(TOrbitals), intent(in) :: orb
+
+            !> Iterator index
+            integer :: i
+
+            !> Number of atoms
+            integer :: nAtom
+
+            !> Differentation step
+            real(dp) :: diffStep = 1e-7_dp
+
+            !> Perturbed orbital-resolved charges
+            real(dp), allocatable :: qPerturbed(:, :, :)
+
+            !> Vector of potentials at point 0
+            real(dp), allocatable :: V0(:)
+
+            !> dV/dq Jacobian matrix
+            real(dp), allocatable :: jacobian(:, :)
+            
+            nAtom = size(qq, dim=2)
+
+            !> Allocate work arrays and initialize
+            allocate(qPerturbed, mold=qq)
+            qPerturbed = 0.0_dp
+            allocate(jacobian(nAtom, nAtom))
+            jacobian = 0.0_dp
+            allocate(V0(nAtom))
+            V0 = 0.0_dp
+            call this%addTotalEnergyPotential(V0)
+
+            do i = 1, nAtom
+                qPerturbed = qq
+                qPerturbed(1, i, 1) = qPerturbed(1, i, 1) + diffStep
+                call this%updateQMCharges(env, species, neighbourList, qPerturbed, &
+                                        & q0, img2CentCell, orb)
+                call this%addTotalEnergyPotential(jacobian(i, :))
+                jacobian(i, :) = (jacobian(i, :) - V0) / diffStep
+            end do
+
+            !> Set charges back to initial
+            call this%updateQMCharges(env, species, neighbourList, qq, q0, img2CentCell, orb)
+
+            !> Compute K-vector contribution and add it to the shift
+            shift = shift + matmul(jacobian, -this%pQMHelper%qqm)
+
+            
+            !> DEBUG: write potential contirbution
+            write(*, *) "Analytic K-vector:"
+            write(*, *) this%pQMHelper%V_p2n
+            write(*, *) "Numeric K-vector:"
+            write(*, *) matmul(jacobian, -this%pQMHelper%qqm)
+
+            !> DEBUG: write J
+            call write_array_newfile(jacobian, 'jacobian.txt')
+
+            !> Deallocate
+            deallocate(qPerturbed)
+            deallocate(jacobian)
+
+        end subroutine addKVectorNumeric
 
         subroutine bigMatrixElementDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
                                                   & iSparseStart, img2CentCell, denseDesc)
@@ -267,10 +405,10 @@ contains
 
             ! INTERNAL VARIABLES:
             !> Unperturbed density matrix
-            real(dp), allocatable :: dm_0(:, :, :)
+            ! real(dp), allocatable :: dm_0(:, :, :)
 
             !> Perturbed density matrix
-            real(dp), allocatable :: dm_perturbed(:, :, :)
+            real(dp), allocatable :: dm_perturbed(:, :)
 
             !> Dense overlap matrix
             real(dp), allocatable :: overlap_dense(:, :)
@@ -281,8 +419,11 @@ contains
             !> Analytical hamiltonian contributions (sparse)
             real(dp), allocatable :: h_exact_sparse(:, :)
 
-            !> Numerical hamiltonian contributions
+            !> Numerical hamiltonian contributions (dense)
             real(dp), allocatable :: h_numeric(:, :, :)
+
+            !> Numeric hamiltonian contributions (sparse)
+            real(dp), allocatable :: h_numeric_sparse(:, :)
 
             !> Perturbed orbital charges (work)
             real(dp), allocatable :: qOrbPerturbed(:, :, :)
@@ -314,38 +455,44 @@ contains
             !> Number of atoms in the system
             integer :: nAtoms
 
-            !> Derivative factor
-            real(dp) :: derFactor = 1.0_dp
-
             nSpin = size(rhoPrim, dim=2)
             nAtoms = size(species)
 
             !> Allocate and initialize unperturbed density matrix
-            allocate(dm_0(denseDesc%fullSize, denseDesc%fullSize, nSpin))
-            dm_0 = 0.0_dp
-            do iSpin = 1, nSpin
-                call unpackHS(dm_0(:, :, iSpin), rhoPrim(:, iSpin), neighbourList%iNeighbour, nNeighbourSK,&
-                            & denseDesc%iAtomStart, iSparseStart, img2CentCell)
-                call blockSymmetrizeHS(dm_0(:, :, iSpin), denseDesc%iAtomStart)
-            end do
+            ! allocate(dm_0(denseDesc%fullSize, denseDesc%fullSize, nSpin))
+            ! dm_0 = 0.0_dp
+            ! do iSpin = 1, nSpin
+            !     call unpackHS(dm_0(:, :, iSpin), rhoPrim(:, iSpin), neighbourList%iNeighbour, nNeighbourSK,&
+            !                 & denseDesc%iAtomStart, iSparseStart, img2CentCell)
+            !     call blockSymmetrizeHS(dm_0(:, :, iSpin), denseDesc%iAtomStart)
+            ! end do
 
             !> Allocate and initialize other matrices
-            allocate(dm_perturbed, mold=dm_0)
+            allocate(dm_perturbed, mold=rhoPrim)
             dm_perturbed = 0.0_dp
-            allocate(h_exact, mold=dm_0)
-            allocate(h_numeric, mold=dm_0)
+            allocate(h_exact(denseDesc%fullSize, denseDesc%fullSize, nSpin))
             allocate(h_exact_sparse, mold=rhoPrim)
+            allocate(h_numeric, mold=h_exact)
+            allocate(h_numeric_sparse, mold=rhoPrim)
             h_exact = 0.0_dp
             h_numeric = 0.0_dp
+            h_numeric_sparse = 0.0_dp
             h_exact_sparse = 0.0_dp
-            allocate(potential(nAtoms, 1))
+            allocate(potential(nAtoms, nSpin))
             potential = 0.0_dp
 
             !> Allocate and initialize charges and potentials
-            allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), 1))
+            allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), nSpin))
             allocate(qOrb0, mold=qOrbPerturbed)
             qOrb0 = 0.0_dp
             qOrbPerturbed = 0.0_dp
+
+            !> Compute the unperturbed population from density matrix
+            do iSpin = 1, nSpin
+                call mulliken(env, qOrb0(:, :, iSpin), ints%overlap, rhoPrim(:, iSpin), &
+                            & orb, neighbourList%iNeighbour, nNeighbourSK,&
+                            & img2CentCell, iSparseStart)
+            end do
 
             !> Make dense overlap matrix
             allocate(overlap_dense(denseDesc%fullSize, denseDesc%fullSize))
@@ -353,66 +500,66 @@ contains
             call unpackHS(overlap_dense, ints%overlap, neighbourList%iNeighbour, nNeighbourSK,&
                         & denseDesc%iAtomStart, iSparseStart, img2CentCell)
             call blockSymmetrizeHS(overlap_dense, denseDesc%iAtomStart)
-
             !> Debug: write overlap and unperturbed density matrices
             call write_array_newfile(overlap_dense, "overlap.txt")
-            call write_array_newfile(dm_0(:, :, 1), "dm.txt")
 
-            !> Compute the unperturbed population from density matrix
-            call denseBlockMullikenFullMatrix(dm_0, overlap_dense, denseDesc%iAtomStart, qOrb0)
-
-            ! !> Get QM/MM energy at unperturbed density
+            !> Set charges back to initial
             ! call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
 
             !> Compute QM/MM coupling energy at unpertubed density matrix
             E_pol_0 = sum(this%qmmmCouplingEnergyPerAtom)
 
-            !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
-            do iSpin = 1, nSpin
-                do j = 1, denseDesc%fullSize
-                    do i = 1, denseDesc%fullSize
-                        !> Construct perturbed density matrix
-                        dm_perturbed = dm_0
-                        dm_perturbed(i, j, iSpin) = dm_perturbed(i, j, iSpin) + diff_step
-                        if (i /= j) then
-                            dm_perturbed(j, i, iSpin) = dm_perturbed(j, i, iSpin) + diff_step 
-                            derFactor = 0.5_dp
-                        else
-                            derFactor = 1.0_dp
-                        end if
-                        
-                        !> Compute charges from perturbed density matrix
-                        call denseBlockMullikenFullMatrix(dm_perturbed, overlap_dense, denseDesc%iAtomStart, qOrbPerturbed)
-        
-                        !> Get variational energy for perturbed charges
-                        call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0, img2CentCell, orb)
-                        E_pol_perturbed = sum(this%qmmmCouplingEnergyPerAtom)
-        
-                        !> Evaluate numerical Fock matrix element
-                        h_numeric(i, j, iSpin) = derFactor * (E_pol_perturbed - E_pol_0) / diff_step
-
-                    end do
-                end do
-            end do
-
-            !> Set charges back to initial
-            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
-
             !> Get analytical potential
-            call this%addPotential(potential(:, 1))
-            ! call this%addKVectorNumeric(potential(:, 1), qOrb0, q0, env, species, &
-                                    !   & neighbourList, img2CentCell, orb)
+            call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
+                                           & neighbourList, img2CentCell, orb)
 
             !> Compute analytic Fock matrix element
             call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
-                              & species, orb, iSparseStart, size(orb%nOrbAtom), img2CentCell, potential, .true.)
+                              & species, orb, iSparseStart, nAtoms, img2CentCell, potential, .true.)
 
             !> Build and symmetrize analytic Fock matrix in dense form
             do iSpin = 1, nSpin
                 call unpackHS(h_exact(:, :, iSpin), h_exact_sparse(:, iSpin), neighbourList%iNeighbour,&
                             & nNeighbourSK, denseDesc%iAtomStart, iSparseStart, img2CentCell)
                 call blockSymmetrizeHS(h_exact(:, :, iSpin), denseDesc%iAtomStart)
+                ! call symmetrizeHS(h_exact(:, :, iSpin))
             end do
+
+            !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
+            do iSpin = 1, nSpin
+                do i = 1, size(dm_perturbed, dim=1)
+                    qOrbPerturbed = 0.0_dp
+                    dm_perturbed = rhoPrim
+                    dm_perturbed(i, iSpin) = dm_perturbed(i, iSpin) + diff_step
+                    call mulliken(env, qOrbPerturbed(:, :, iSpin), ints%overlap, dm_perturbed(:, iSpin), &
+                                & orb, neighbourList%iNeighbour, nNeighbourSK, img2CentCell, &
+                                & iSparseStart)
+                    call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0,&
+                                            & img2CentCell, orb)
+                    E_pol_perturbed = sum(this%qmmmCouplingEnergyPerAtom)
+                    h_numeric_sparse(i, iSpin) = (E_pol_perturbed - E_pol_0) / diff_step
+                end do
+            end do
+
+            !> Unpack sparse numerical Hamiltonian and correct off-diaongal values
+            !> by multiplying them by 1/2
+            do iSpin = 1, nSpin
+                call unpackHS(h_numeric(:, :, iSpin), h_numeric_sparse(:, iSpin), &
+                            & neighbourList%iNeighbour, nNeighbourSK, &
+                            & denseDesc%iAtomStart, iSparseStart, img2CentCell)
+                call blockSymmetrizeHS(h_numeric(:, :, iSpin), denseDesc%iAtomStart)
+                ! call symmetrizeHS(h_numeric(:, :, iSpin))
+                do j = 1, denseDesc%fullSize
+                    do i = 1, denseDesc%fullSize
+                        if (i /= j) then
+                            h_numeric(i, j, iSpin) = h_numeric(i, j, iSpin) * 0.5_dp
+                        end if
+                    end do
+                end do
+            end do
+
+            !> Set charges back to initial
+            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
 
             !> Write analytical dense Fock matrix (spin channel 1)
             call write_array_newfile(h_exact(:, :, 1), "qmmm_fock_analytic.txt")
@@ -423,25 +570,24 @@ contains
             !> Total difference:
             ! write(*, *) "Total difference between analytic and numeric Hamiltonians:"
             ! write(*, *) sum(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)))
-            
+
             !> Write difference matrix
             call write_array_newfile(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)), "qmmm_fock_difference.txt")
             
             !> Set small matrix elements to zero
             ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
 
-            
             !> Deallocate all temporary arrays
-            deallocate(dm_0)
             deallocate(dm_perturbed)
             deallocate(h_exact)
             deallocate(h_exact_sparse)
             deallocate(h_numeric)
+            deallocate(h_numeric_sparse)
             deallocate(qOrb0)
             deallocate(qOrbPerturbed)
             deallocate(overlap_dense)
             deallocate(potential)
-
+            
             #:if WITH_OPENMMPOL
             #:else 
             call notImplementedError

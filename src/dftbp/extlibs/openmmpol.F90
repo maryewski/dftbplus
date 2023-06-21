@@ -237,14 +237,12 @@ contains
             #:if WITH_OPENMMPOL
 
             !> Add potential from openmmpol to the vector of potentials
-            ! shiftPerAtom = shiftPerAtom  + (this%atomPotConst + 2.0_dp * this%atomPotPolarizable)
-            ! TODO: why the factor of 0.5?
-            ! shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2 * this%atomPotPolarizable)
+            shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2.0_dp * this%atomPotPolarizable)
 
-            !> DEBUG: numeric K-vector potential
-            call this%addTotalEnergyPotential(shiftPerAtom)
-            call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
-                                      & neighbourList, img2CentCell, orb)
+            ! call this%addTotalEnergyPotential(shiftPerAtom)
+            ! > DEBUG: numeric K-vector potential
+            ! call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
+                                    !   & neighbourList, img2CentCell, orb)
 
             #:else 
             call notImplementedError
@@ -355,10 +353,11 @@ contains
             !> Compute K-vector contribution and add it to the shift
             shift = shift + matmul(jacobian, -this%pQMHelper%qqm)
 
-            
             !> DEBUG: write potential contirbution
+            write(*, *) "Constant potential:"
+            write(*, *) -this%pQMHelper%V_m2n
             write(*, *) "Analytic K-vector:"
-            write(*, *) this%pQMHelper%V_p2n
+            write(*, *) -this%pQMHelper%V_p2n
             write(*, *) "Numeric K-vector:"
             write(*, *) matmul(jacobian, -this%pQMHelper%qqm)
 

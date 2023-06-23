@@ -352,10 +352,6 @@ contains
       call TPlumedCalc_final(this%plumedCalc)
     end if
 
-    if (allocated(this%openmmpolCalc)) then
-      call TOMMPInterface_terminate(this%openmmpolCalc)
-    end if
-
     tGeomEnd = this%tMD .or. tGeomEnd .or. this%tDerivs
 
     if (env%tGlobalLead) then
@@ -581,6 +577,10 @@ contains
       call TNegfInt_final(this%negfInt)
     end if
   #:endif
+
+  if (allocated(this%openmmpolCalc)) then
+    call TOMMPInterface_terminate(this%openmmpolCalc)
+  end if
 
   end subroutine runDftbPlus
 
@@ -1296,17 +1296,19 @@ contains
 
         call processOutputCharges(env, this)
 
-        call this%openmmpolCalc%testNumericalMatrixElementsDebug(env, this%rhoPrim, this%ints, this%orb,&
-                                                                & this%species, this%q0, this%neighbourList,&
-                                                                & this%nNeighbourSK, this%denseDesc%iAtomStart,&
-                                                                & this%iSparseStart, this%img2CentCell)
-
         ! Note: if XLBOMD is active, potential created with input charges is needed later,
         ! therefore it should not be overwritten here.
         if (.not.this%isXlbomd) then
           ! iteration is +1 as output potential in iteration 1 only available after solution of H
           call processPotentials(env, this, iSccIter+1, this%updateSccAfterDiag, .false., this%qOutput,&
               & this%qBlockOut, this%qiBlockOut)
+        end if
+
+        if (allocated(this%openmmpolCalc)) then
+          call this%openmmpolCalc%bigMatrixElementDebugTest(env, this%rhoPrim, this%ints, this%orb,&
+                                                                  & this%species, this%q0, this%neighbourList,&
+                                                                  & this%nNeighbourSK, this%iSparseStart,&
+                                                                  & this%img2CentCell, this%denseDesc)
         end if
 
         call calcEnergies(env, this%scc, this%tblite, this%qOutput, this%q0, this%chargePerShell,&
@@ -1329,7 +1331,7 @@ contains
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%atomDisp,&
               & this%dftbEnergy(this%deltaDftb%iDeterminant)%Edisp, this%iAtInCentralRegion)
         end if
-
+        
         call sumEnergies(this%dftbEnergy(this%deltaDftb%iDeterminant))
 
         call sccLoopWriting(this, iGeoStep, iLatGeoStep, iSccIter, diffElec, sccErrorQ)

@@ -13,7 +13,8 @@ module dftbp_extlibs_openmmpol
     use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_init_xyz, ommp_terminate, ommp_print_summary, &
                                ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
-                               ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
+                               ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH, &
+                               ommp_get_fixedelec_energy, ommp_get_polelec_energy
 #:endif
     use dftbp_io_message, only : error, warning
     use dftbp_common_environment, only : TEnvironment
@@ -53,8 +54,6 @@ module dftbp_extlibs_openmmpol
         procedure :: addFockMatrixPotential
         procedure :: addTotalEnergyPotential
         procedure :: bigMatrixElementDebugTest
-        procedure :: addKVectorNumeric
-        ! procedure :: addGradients
     end type
 
 type :: TOMMPInput
@@ -170,8 +169,8 @@ contains
             !  convention, therefore we need a sign inversion when passing them to openmmpol
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=this%pQMHelper%qqm)
             this%pQMHelper%qqm = -this%pQMHelper%qqm
-            ! write(*, *) "Charge supplied:"
-            ! write(*, *) this%pQMHelper%qqm
+            !write(*, *) "Charge supplied:"
+            !write(*, *) this%pQMHelper%qqm
 
             !> Compute electric field produced by QM part of the system on MM atoms
             this%pQMHelper%E_n2p_done = .false. 
@@ -180,13 +179,22 @@ contains
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
             
             !> Set external field for MM, solve the polarization equations
-            this%pSystem%eel%ipd_done = .false.
-            this%pSystem%eel%D2mgg_done = .false.
-            this%pSystem%eel%D2dgg_done = .false.
+            this%pSystem%eel%D2Mgg_done = .false.
+            this%pSystem%eel%D2Dgg_done = .false.
 
             call ommp_set_external_field(this%pSystem, &
                                          this%pQMHelper%E_n2p, &
                                          this%solver, .true.)
+            !write(*, *) "DIPOLES ALL", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
+            !call ommp_set_external_field(this%pSystem, &
+            !                             this%pQMHelper%E_n2p, &
+            !                             this%solver, .false.)
+            !write(*, *) "DIPOLES QM", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
+            !call ommp_set_external_field(this%pSystem, &
+            !                             this%pQMHelper%E_n2p*0.0, &
+            !                             this%solver, .true.)
+            !write(*, *) "DIPOLES MM", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
+
 
             !> Compute electostatic potential produced by MM+Pol part on QM nuclei
             this%pQMHelper%V_p2n_done = .false. 
@@ -195,12 +203,14 @@ contains
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
             !> Store computed potential on QM atoms
-            this%atomPotConst = -this%pQMHelper%V_m2n
-            this%atomPotPolarizable = -this%pQMHelper%V_p2n
+            this%atomPotConst = this%pQMHelper%V_m2n
+            this%atomPotPolarizable = this%pQMHelper%V_p2n
+
             !> Store coupling energy
-            this%qmmmCouplingEnergyPerAtom = (this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n))
-            ! this%electrostaticEnergy = ommp_get_full_ele_energy(this%pSystem)
-            this%electrostaticEnergy = sum(this%qmmmCouplingEnergyPerAtom)
+            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%atomPotConst + 0.5 * this%atomPotPolarizable)
+            this%electrostaticEnergy = ommp_get_fixedelec_energy(this%pSystem) &
+                                       + ommp_get_polelec_energy(this%pSystem) &
+                                       + sum(this%qmmmCouplingEnergyPerAtom)
 
             !> Debug: prints total QM/MM coupling energy on every step
             ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
@@ -247,8 +257,8 @@ contains
             call this%addTotalEnergyPotential(shiftPerAtom)
             ! shiftPerAtom = shiftPerAtom + this%atomPotPolarizable
             ! > DEBUG: numeric K-vector potential
-            call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
-                                      & neighbourList, img2CentCell, orb)
+            !call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
+            !                          & neighbourList, img2CentCell, orb)
             #:else 
             call notImplementedError
             #:endif
@@ -264,7 +274,7 @@ contains
             #:if WITH_OPENMMPOL
 
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom + (this%atomPotConst + this%atomPotPolarizable)
+            shiftPerAtom = shiftPerAtom - (this%atomPotPolarizable + this%atomPotConst)
 
             #:else 
             call notImplementedError
@@ -286,98 +296,6 @@ contains
             #:endif
 
         end subroutine
-
-        subroutine addKVectorNumeric(this, shift, qq, q0, env, species, neighbourList, img2CentCell, orb)
-            class(TOMMPInterface), intent(in) :: this
-
-            !> Vector to add K-vector shift to
-            real(dp), intent(inout) ::  shift(:)
-
-            !> Orbital-resolved Mulliken population
-            real(dp), intent(in) :: qq(:, :, :)
-
-            !> Reference orbital-resolved Mulliken population
-            real(dp), intent(in) :: q0(:, :, :)
-
-            !> Environment class
-            type(TEnvironment), intent(in) :: env
-
-            !> Species vector
-            integer, intent(in) :: species(:)
-
-            !> Neighbour list class
-            type(TNeighbourList), intent(in) :: neighbourList
-
-            !> Image-to-central-cell mapping
-            integer, intent(in) :: img2CentCell(:)
-
-            !> Orbital information class
-            type(TOrbitals), intent(in) :: orb
-
-            !> Iterator index
-            integer :: i
-
-            !> Number of atoms
-            integer :: nAtom
-
-            !> Differentation step
-            real(dp) :: diffStep = 1e-7_dp
-
-            !> Perturbed orbital-resolved charges
-            real(dp), allocatable :: qPerturbed(:, :, :)
-
-            !> Vector of potentials at point 0
-            real(dp), allocatable :: V0(:)
-
-            !> dV/dq Jacobian matrix
-            real(dp), allocatable :: jacobian(:, :)
-            
-            nAtom = size(qq, dim=2)
-
-            !> Allocate work arrays and initialize
-            allocate(qPerturbed, mold=qq)
-            qPerturbed = 0.0_dp
-            allocate(jacobian(nAtom, nAtom))
-            jacobian = 0.0_dp
-            allocate(V0(nAtom))
-            V0 = 0.0_dp
-            call this%addTotalEnergyPotential(V0)
-
-            do i = 1, nAtom
-                qPerturbed = qq
-                qPerturbed(1, i, 1) = qPerturbed(1, i, 1) + diffStep
-                call this%updateQMCharges(env, species, neighbourList, qPerturbed, &
-                                        & q0, img2CentCell, orb)
-                call this%addTotalEnergyPotential(jacobian(i, :))
-                jacobian(i, :) = (jacobian(i, :) - V0) / diffStep
-            end do
-
-            !> Set charges back to initial
-            call this%updateQMCharges(env, species, neighbourList, qq, q0, img2CentCell, orb)
-
-            !> Compute K-vector contribution and add it to the shift
-            shift = shift + matmul(jacobian, -this%pQMHelper%qqm)
-
-            !> DEBUG: write potential contirbution
-            write(*, *) "Constant potential:"
-            write(*, *) -this%pQMHelper%V_m2n
-            write(*, *) "Analytic K-vector:"
-            write(*, *) -this%pQMHelper%V_p2n
-            write(*, *) "Numeric K-vector:"
-            write(*, *) matmul(jacobian, -this%pQMHelper%qqm)
-            write(*, *) "Analytic total potential:"
-            write(*, *) -this%pQMHelper%V_m2n - 2 * this%pQMHelper%V_p2n
-            write(*, *) "Numeric total potential:"
-            write(*, *) -this%pQMHelper%V_m2n - this%pQMHelper%V_p2n + matmul(jacobian, -this%pQMHelper%qqm)
-
-            !> DEBUG: write J
-            call write_array_newfile(jacobian, 'jacobian.txt')
-
-            !> Deallocate
-            deallocate(qPerturbed)
-            deallocate(jacobian)
-
-        end subroutine addKVectorNumeric
 
         subroutine bigMatrixElementDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
                                                   & iSparseStart, img2CentCell, denseDesc)
@@ -447,7 +365,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Numerical differention step
-            real(dp), parameter :: diff_step = 1e-7_dp
+            real(dp), parameter :: diff_step = 1e-5_dp
 
             !> Iterator indices for rank 2 martrices
             integer :: i, j
@@ -524,8 +442,9 @@ contains
             ! call write_array_newfile(overlap_dense, "overlap.txt")
 
             !> Get analytical potential
-            call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
-                                           & neighbourList, img2CentCell, orb)
+            !call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
+            !                               & neighbourList, img2CentCell, orb)
+            potential(:,1) = - (this%atomPotPolarizable + this%atomPotConst)
 
             !> Compute analytic Fock matrix element
             call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&

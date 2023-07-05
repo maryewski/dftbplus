@@ -13,7 +13,7 @@ module dftbp_extlibs_openmmpol
     use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_init_xyz, ommp_terminate, ommp_print_summary, &
                                ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
-                               OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
+                               ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
 #:endif
     use dftbp_io_message, only : error, warning
     use dftbp_common_environment, only : TEnvironment
@@ -45,6 +45,7 @@ module dftbp_extlibs_openmmpol
         real(dp), allocatable :: atomPotConst(:)
         real(dp), allocatable :: atomPotPolarizable(:)
         real(dp) :: forceFieldEnergy
+        real(dp) :: electrostaticEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
@@ -85,6 +86,9 @@ contains
             this%atomPotConst = 0.0_dp
             allocate(this%atomPotPolarizable(nQMatoms))
             this%atomPotPolarizable = 0.0_dp
+
+            this%forceFieldEnergy = 0.0_dp
+            this%electrostaticEnergy = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
                 call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
@@ -194,11 +198,13 @@ contains
             this%atomPotConst = -this%pQMHelper%V_m2n
             this%atomPotPolarizable = -this%pQMHelper%V_p2n
             !> Store coupling energy
-            ! this%qmmmCouplingEnergyPerAtom = 0.5_dp * (this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n))
             this%qmmmCouplingEnergyPerAtom = (this%pQMHelper%qqm * (this%pQMHelper%V_m2n + this%pQMHelper%V_p2n))
+            ! this%electrostaticEnergy = ommp_get_full_ele_energy(this%pSystem)
+            this%electrostaticEnergy = sum(this%qmmmCouplingEnergyPerAtom)
 
             !> Debug: prints total QM/MM coupling energy on every step
-            write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
+            ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
+            ! write(*, "(A,F12.6, A)") "E_QMMM: ", this%electrostaticEnergy * 627.5, " kJ/mol"
 
             #:else 
             call notImplementedError
@@ -237,13 +243,12 @@ contains
             #:if WITH_OPENMMPOL
 
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2.0_dp * this%atomPotPolarizable)
-
-            ! call this%addTotalEnergyPotential(shiftPerAtom)
+            ! shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2 * this%atomPotPolarizable)
+            call this%addTotalEnergyPotential(shiftPerAtom)
+            ! shiftPerAtom = shiftPerAtom + this%atomPotPolarizable
             ! > DEBUG: numeric K-vector potential
-            ! call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
-                                    !   & neighbourList, img2CentCell, orb)
-
+            call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
+                                      & neighbourList, img2CentCell, orb)
             #:else 
             call notImplementedError
             #:endif
@@ -360,6 +365,10 @@ contains
             write(*, *) -this%pQMHelper%V_p2n
             write(*, *) "Numeric K-vector:"
             write(*, *) matmul(jacobian, -this%pQMHelper%qqm)
+            write(*, *) "Analytic total potential:"
+            write(*, *) -this%pQMHelper%V_m2n - 2 * this%pQMHelper%V_p2n
+            write(*, *) "Numeric total potential:"
+            write(*, *) -this%pQMHelper%V_m2n - this%pQMHelper%V_p2n + matmul(jacobian, -this%pQMHelper%qqm)
 
             !> DEBUG: write J
             call write_array_newfile(jacobian, 'jacobian.txt')
@@ -403,8 +412,6 @@ contains
             type(TDenseDescr), intent(in) :: denseDesc
 
             ! INTERNAL VARIABLES:
-            !> Unperturbed density matrix
-            ! real(dp), allocatable :: dm_0(:, :, :)
 
             !> Perturbed density matrix
             real(dp), allocatable :: dm_perturbed(:, :)
@@ -493,20 +500,28 @@ contains
                             & img2CentCell, iSparseStart)
             end do
 
-            !> Make dense overlap matrix
-            allocate(overlap_dense(denseDesc%fullSize, denseDesc%fullSize))
-            overlap_dense = 0.0_dp
-            call unpackHS(overlap_dense, ints%overlap, neighbourList%iNeighbour, nNeighbourSK,&
-                        & denseDesc%iAtomStart, iSparseStart, img2CentCell)
-            call blockSymmetrizeHS(overlap_dense, denseDesc%iAtomStart)
-            !> Debug: write overlap and unperturbed density matrices
-            call write_array_newfile(overlap_dense, "overlap.txt")
-
             !> Set charges back to initial
-            ! call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+            ! write(*, *) "Initial charge:"
+            ! write(*, *) -this%pQMHelper%qqm
+            ! write(*, *) "Initial energy:"
+            ! write(*, *) this%electrostaticEnergy
+            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+            ! write(*, *) "Charge after setting:"
+            ! write(*, *) -this%pQMHelper%qqm
+            ! write(*, *) "Energy after setting:"
+            ! write(*, *) this%electrostaticEnergy
 
             !> Compute QM/MM coupling energy at unpertubed density matrix
-            E_pol_0 = sum(this%qmmmCouplingEnergyPerAtom)
+            E_pol_0 = this%electrostaticEnergy
+
+            !> Make dense overlap matrix
+            ! allocate(overlap_dense(denseDesc%fullSize, denseDesc%fullSize))
+            ! overlap_dense = 0.0_dp
+            ! call unpackHS(overlap_dense, ints%overlap, neighbourList%iNeighbour, nNeighbourSK,&
+            !             & denseDesc%iAtomStart, iSparseStart, img2CentCell)
+            ! call blockSymmetrizeHS(overlap_dense, denseDesc%iAtomStart)
+            ! !> Debug: write overlap and unperturbed density matrices
+            ! call write_array_newfile(overlap_dense, "overlap.txt")
 
             !> Get analytical potential
             call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
@@ -535,7 +550,7 @@ contains
                                 & iSparseStart)
                     call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0,&
                                             & img2CentCell, orb)
-                    E_pol_perturbed = sum(this%qmmmCouplingEnergyPerAtom)
+                    E_pol_perturbed = this%electrostaticEnergy
                     h_numeric_sparse(i, iSpin) = (E_pol_perturbed - E_pol_0) / diff_step
                 end do
             end do
@@ -584,8 +599,8 @@ contains
             deallocate(h_numeric_sparse)
             deallocate(qOrb0)
             deallocate(qOrbPerturbed)
-            deallocate(overlap_dense)
             deallocate(potential)
+            ! deallocate(overlap_dense)
             
             #:if WITH_OPENMMPOL
             #:else 

@@ -195,16 +195,6 @@ contains
             call ommp_set_external_field(this%pSystem, &
                                          this%pQMHelper%E_n2p, &
                                          this%solver, .true.)
-            !write(*, *) "DIPOLES ALL", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
-            !call ommp_set_external_field(this%pSystem, &
-            !                             this%pQMHelper%E_n2p, &
-            !                             this%solver, .false.)
-            !write(*, *) "DIPOLES QM", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
-            !call ommp_set_external_field(this%pSystem, &
-            !                             this%pQMHelper%E_n2p*0.0, &
-            !                             this%solver, .true.)
-            !write(*, *) "DIPOLES MM", shape(this%pSystem%eel%ipd), this%pSystem%eel%ipd
-
 
             !> Compute electostatic potential produced by MM+Pol part on QM nuclei
             this%pQMHelper%V_p2n_done = .false. 

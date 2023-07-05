@@ -44,7 +44,8 @@ module dftbp_extlibs_openmmpol
         ! real(dp) :: qmmmCouplingEnergy
         real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
         real(dp), allocatable :: atomPotConst(:)
-        real(dp), allocatable :: atomPotPolarizable(:)
+        real(dp), allocatable :: atomPotPolarizableEne(:)
+        real(dp), allocatable :: atomPotPolarizableFock(:)
         real(dp) :: forceFieldEnergy
         real(dp) :: electrostaticEnergy
     contains
@@ -83,8 +84,10 @@ contains
             this%qmmmCouplingEnergyPerAtom = 0.0_dp
             allocate(this%atomPotConst(nQMatoms))
             this%atomPotConst = 0.0_dp
-            allocate(this%atomPotPolarizable(nQMatoms))
-            this%atomPotPolarizable = 0.0_dp
+            allocate(this%atomPotPolarizableEne(nQMatoms))
+            this%atomPotPolarizableEne = 0.0_dp
+            allocate(this%atomPotPolarizableFock(nQMatoms))
+            this%atomPotPolarizableFock = 0.0_dp
 
             this%forceFieldEnergy = 0.0_dp
             this%electrostaticEnergy = 0.0_dp
@@ -103,6 +106,12 @@ contains
             allocate(netCharges(nQMatoms))
             netCharges = 0.0_dp
             call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
+
+            ! To compute the fock matrix for AMOEBA FF also the potential of P dipoles is required.
+            if(this%pSystem%amoeba) then
+                this%pQMHelper%V_pp2n_req = .true.
+            end if
+
             deallocate(netCharges)
             #:else 
             call notImplementedError
@@ -117,7 +126,8 @@ contains
             call ommp_terminate(this%pSystem)
             deallocate(this%qmmmCouplingEnergyPerAtom)
             deallocate(this%atomPotConst)
-            deallocate(this%atomPotPolarizable)
+            deallocate(this%atomPotPolarizableEne)
+            deallocate(this%atomPotPolarizableFock)
             #:else 
             call notImplementedError
             #:endif
@@ -198,16 +208,25 @@ contains
 
             !> Compute electostatic potential produced by MM+Pol part on QM nuclei
             this%pQMHelper%V_p2n_done = .false. 
+            if(this%pSystem%amoeba) then
+                this%pQMHelper%V_pp2n_done = .false. 
+            end if
 
             !> Only computes V_p2n, after having updated the external field/IPDs
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
             !> Store computed potential on QM atoms
             this%atomPotConst = this%pQMHelper%V_m2n
-            this%atomPotPolarizable = this%pQMHelper%V_p2n
+            if(this%pSystem%amoeba) then
+                this%atomPotPolarizableEne = this%pQMHelper%V_p2n
+                this%atomPotPolarizableFock = (this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5
+            else
+                this%atomPotPolarizableEne = this%pQMHelper%V_p2n
+                this%atomPotPolarizableFock = this%pQMHelper%V_p2n
+            end if
 
             !> Store coupling energy
-            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%atomPotConst + 0.5 * this%atomPotPolarizable)
+            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%atomPotConst + 0.5 * this%atomPotPolarizableEne)
             this%electrostaticEnergy = ommp_get_fixedelec_energy(this%pSystem) &
                                        + ommp_get_polelec_energy(this%pSystem) &
                                        + sum(this%qmmmCouplingEnergyPerAtom)
@@ -274,7 +293,7 @@ contains
             #:if WITH_OPENMMPOL
 
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom - (this%atomPotPolarizable + this%atomPotConst)
+            shiftPerAtom = shiftPerAtom - (this%atomPotPolarizableFock + this%atomPotConst)
 
             #:else 
             call notImplementedError
@@ -442,9 +461,8 @@ contains
             ! call write_array_newfile(overlap_dense, "overlap.txt")
 
             !> Get analytical potential
-            !call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
-            !                               & neighbourList, img2CentCell, orb)
-            potential(:,1) = - (this%atomPotPolarizable + this%atomPotConst)
+            call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
+                                           & neighbourList, img2CentCell, orb)
 
             !> Compute analytic Fock matrix element
             call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&

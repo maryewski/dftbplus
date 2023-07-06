@@ -41,20 +41,18 @@ module dftbp_extlibs_openmmpol
     #:endif
 
         integer :: solver
-        ! real(dp) :: qmmmCouplingEnergy
-        real(dp), allocatable :: qmmmCouplingEnergyPerAtom(:)
+        real(dp), allocatable :: qmmmCouplingPerAtom(:)
         real(dp), allocatable :: atomPotConst(:)
-        real(dp), allocatable :: atomPotPolarizableEne(:)
-        real(dp), allocatable :: atomPotPolarizableFock(:)
+        real(dp), allocatable :: atomPotPolEnergy(:)
+        real(dp), allocatable :: atomPotPolFock(:)
         real(dp) :: forceFieldEnergy
         real(dp) :: electrostaticEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
         procedure :: addAtomEnergies
-        procedure :: addFockMatrixPotential
-        procedure :: addTotalEnergyPotential
-        procedure :: bigMatrixElementDebugTest
+        procedure :: addPotential
+        procedure :: FockMatrixDebugTest
     end type
 
 type :: TOMMPInput
@@ -69,25 +67,31 @@ public TOMMPInterface, TOMMPInterface_init
 contains 
 
 ! SECTION: subroutines
-        subroutine TOMMPInterface_init(this, openmmpolInput, nQMatoms, atomTypes, qmAtomCoords)
+        subroutine TOMMPInterface_init(this, openmmpolInput, atomTypes, qmAtomCoords)
             type(TOMMPInterface), intent(out) :: this
             type(TOMMPInput), intent(in) :: openmmpolInput
-            integer, intent(in) :: nQMatoms
-            integer, dimension(nQMatoms), intent(in) :: atomTypes
-            real(dp), dimension(3, nQMatoms), intent(in) :: qmAtomCoords
-            real(dp), allocatable, dimension(:) :: netCharges
-            
+            integer, intent(in), dimension(:) :: atomTypes
+            real(dp), dimension(:, :), intent(in) :: qmAtomCoords
+
+            !> N of QM atoms
+            integer :: nQMatoms
+
+            !> Dummy charge array for initialization
+            real(dp), allocatable, dimension(:) :: chargesDummy
+
             #:if WITH_OPENMMPOL
+            nQMatoms = size(atomTypes)
+
             this%solver = openmmpolInput%solver
             this%forceFieldEnergy = 0.0_dp
-            allocate(this%qmmmCouplingEnergyPerAtom(nQMatoms))
-            this%qmmmCouplingEnergyPerAtom = 0.0_dp
+            allocate(this%qmmmCouplingPerAtom(nQMatoms))
+            this%qmmmCouplingPerAtom = 0.0_dp
             allocate(this%atomPotConst(nQMatoms))
             this%atomPotConst = 0.0_dp
-            allocate(this%atomPotPolarizableEne(nQMatoms))
-            this%atomPotPolarizableEne = 0.0_dp
-            allocate(this%atomPotPolarizableFock(nQMatoms))
-            this%atomPotPolarizableFock = 0.0_dp
+            allocate(this%atomPotPolEnergy(nQMatoms))
+            this%atomPotPolEnergy = 0.0_dp
+            allocate(this%atomPotPolFock(nQMatoms))
+            this%atomPotPolFock = 0.0_dp
 
             this%forceFieldEnergy = 0.0_dp
             this%electrostaticEnergy = 0.0_dp
@@ -103,16 +107,17 @@ contains
             ! TODO: add verbosity control
             call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
             ! call ommp_set_verbose(OMMP_VERBOSE_LOW)
-            allocate(netCharges(nQMatoms))
-            netCharges = 0.0_dp
-            call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, netCharges, atomTypes)
+            
+            allocate(chargesDummy(nQMatoms))
+            chargesDummy = 0.0_dp
+            call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, chargesDummy, atomTypes)
+            deallocate(chargesDummy)
 
-            ! To compute the fock matrix for AMOEBA FF also the potential of P dipoles is required.
+            ! If using AMOEBA, request potentials from the P set of dipoles
             if(this%pSystem%amoeba) then
                 this%pQMHelper%V_pp2n_req = .true.
             end if
 
-            deallocate(netCharges)
             #:else 
             call notImplementedError
             #:endif
@@ -124,10 +129,10 @@ contains
             #:if WITH_OPENMMPOL
             call ommp_terminate_qm_helper(this%pQMHelper)
             call ommp_terminate(this%pSystem)
-            deallocate(this%qmmmCouplingEnergyPerAtom)
+            deallocate(this%qmmmCouplingPerAtom)
             deallocate(this%atomPotConst)
-            deallocate(this%atomPotPolarizableEne)
-            deallocate(this%atomPotPolarizableFock)
+            deallocate(this%atomPotPolEnergy)
+            deallocate(this%atomPotPolFock)
             #:else 
             call notImplementedError
             #:endif
@@ -206,23 +211,25 @@ contains
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
 
             !> Store computed potential on QM atoms
-            this%atomPotConst = this%pQMHelper%V_m2n
+            this%atomPotConst = -this%pQMHelper%V_m2n
+            this%atomPotPolEnergy = -this%pQMHelper%V_p2n
+            !> If using AMOEBA, the Fock potential is equal to the mean for two sets of dipoles
             if(this%pSystem%amoeba) then
-                this%atomPotPolarizableEne = this%pQMHelper%V_p2n
-                this%atomPotPolarizableFock = (this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5
+                this%atomPotPolFock = -(this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5_dp
             else
-                this%atomPotPolarizableEne = this%pQMHelper%V_p2n
-                this%atomPotPolarizableFock = this%pQMHelper%V_p2n
+                this%atomPotPolFock = -this%pQMHelper%V_p2n
             end if
 
-            !> Store coupling energy
-            this%qmmmCouplingEnergyPerAtom = this%pQMHelper%qqm * (this%atomPotConst + 0.5 * this%atomPotPolarizableEne)
-            this%electrostaticEnergy = ommp_get_fixedelec_energy(this%pSystem) &
-                                       + ommp_get_polelec_energy(this%pSystem) &
-                                       + sum(this%qmmmCouplingEnergyPerAtom)
+            !> Store coupling energy per atom
+            this%qmmmCouplingPerAtom = this%pQMHelper%qqm * -(this%atomPotConst + 0.5_dp * this%atomPotPolEnergy)
+            
+            !> Store total QM/MM electrostatic energy
+            ! this%electrostaticEnergy = ommp_get_fixedelec_energy(this%pSystem) &
+                                    !    + ommp_get_polelec_energy(this%pSystem) &
+            this%electrostaticEnergy = ommp_get_polelec_energy(this%pSystem) &
+                                       + sum(this%qmmmCouplingPerAtom)
 
             !> Debug: prints total QM/MM coupling energy on every step
-            ! write(*, "(A,F12.6, A)") "E_QMMM: ", sum(this%qmmmCouplingEnergyPerAtom) * 627.5, " kJ/mol"
             ! write(*, "(A,F12.6, A)") "E_QMMM: ", this%electrostaticEnergy * 627.5, " kJ/mol"
 
             #:else 
@@ -230,8 +237,8 @@ contains
             #:endif
         end subroutine
 
-        subroutine addFockMatrixPotential(this, shiftPerAtom, qq, q0, env, species,&
-                                        & neighbourList, img2CentCell, orb)
+        subroutine addPotential(this, shiftPerAtom, qq, q0, env, species,&
+                                    & neighbourList, img2CentCell, orb)
 
             class(TOMMPInterface):: this
 
@@ -260,36 +267,13 @@ contains
             type(TOrbitals), intent(in) :: orb
 
             #:if WITH_OPENMMPOL
-
             !> Add potential from openmmpol to the vector of potentials
-            ! shiftPerAtom = shiftPerAtom + (this%atomPotConst + 2 * this%atomPotPolarizable)
-            call this%addTotalEnergyPotential(shiftPerAtom)
-            ! shiftPerAtom = shiftPerAtom + this%atomPotPolarizable
-            ! > DEBUG: numeric K-vector potential
-            !call this%addKVectorNumeric(shiftPerAtom, qq, q0, env, species,&
-            !                          & neighbourList, img2CentCell, orb)
+            shiftPerAtom = shiftPerAtom + this%atomPotConst + this%atomPotPolFock
             #:else 
             call notImplementedError
             #:endif
 
         end subroutine
-
-        subroutine addTotalEnergyPotential(this, shiftPerAtom)
-            class(TOMMPInterface) :: this
-
-            !> Computed potential is added to this vector
-            real(dp), intent(inout) :: shiftPerAtom(:)
-
-            #:if WITH_OPENMMPOL
-
-            !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom - (this%atomPotPolarizableFock + this%atomPotConst)
-
-            #:else 
-            call notImplementedError
-            #:endif
-            
-        end subroutine addTotalEnergyPotential
 
         subroutine addAtomEnergies(this, energyArray)
             class(TOMMPInterface) :: this
@@ -306,7 +290,7 @@ contains
 
         end subroutine
 
-        subroutine bigMatrixElementDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
+        subroutine FockMatrixDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
                                                   & iSparseStart, img2CentCell, denseDesc)
             class(TOMMPInterface) :: this
 
@@ -344,7 +328,7 @@ contains
             real(dp), allocatable :: dm_perturbed(:, :)
 
             !> Dense overlap matrix
-            real(dp), allocatable :: overlap_dense(:, :)
+            ! real(dp), allocatable :: overlap_dense(:, :)
 
             !> Analytical hamiltonian contributions (dense)
             real(dp), allocatable :: h_exact(:, :, :)
@@ -374,7 +358,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Numerical differention step
-            real(dp), parameter :: diff_step = 1e-5_dp
+            real(dp), parameter :: diff_step = 1e-7_dp
 
             !> Iterator indices for rank 2 martrices
             integer :: i, j
@@ -390,15 +374,6 @@ contains
 
             nSpin = size(rhoPrim, dim=2)
             nAtoms = size(species)
-
-            !> Allocate and initialize unperturbed density matrix
-            ! allocate(dm_0(denseDesc%fullSize, denseDesc%fullSize, nSpin))
-            ! dm_0 = 0.0_dp
-            ! do iSpin = 1, nSpin
-            !     call unpackHS(dm_0(:, :, iSpin), rhoPrim(:, iSpin), neighbourList%iNeighbour, nNeighbourSK,&
-            !                 & denseDesc%iAtomStart, iSparseStart, img2CentCell)
-            !     call blockSymmetrizeHS(dm_0(:, :, iSpin), denseDesc%iAtomStart)
-            ! end do
 
             !> Allocate and initialize other matrices
             allocate(dm_perturbed, mold=rhoPrim)
@@ -427,31 +402,11 @@ contains
                             & img2CentCell, iSparseStart)
             end do
 
-            !> Set charges back to initial
-            ! write(*, *) "Initial charge:"
-            ! write(*, *) -this%pQMHelper%qqm
-            ! write(*, *) "Initial energy:"
-            ! write(*, *) this%electrostaticEnergy
-            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
-            ! write(*, *) "Charge after setting:"
-            ! write(*, *) -this%pQMHelper%qqm
-            ! write(*, *) "Energy after setting:"
-            ! write(*, *) this%electrostaticEnergy
-
             !> Compute QM/MM coupling energy at unpertubed density matrix
             E_pol_0 = this%electrostaticEnergy
 
-            !> Make dense overlap matrix
-            ! allocate(overlap_dense(denseDesc%fullSize, denseDesc%fullSize))
-            ! overlap_dense = 0.0_dp
-            ! call unpackHS(overlap_dense, ints%overlap, neighbourList%iNeighbour, nNeighbourSK,&
-            !             & denseDesc%iAtomStart, iSparseStart, img2CentCell)
-            ! call blockSymmetrizeHS(overlap_dense, denseDesc%iAtomStart)
-            ! !> Debug: write overlap and unperturbed density matrices
-            ! call write_array_newfile(overlap_dense, "overlap.txt")
-
             !> Get analytical potential
-            call this%addFockMatrixPotential(potential(:, 1), qOrb0, q0, env, species,&
+            call this%addPotential(potential(:, 1), qOrb0, q0, env, species,&
                                            & neighbourList, img2CentCell, orb)
 
             !> Compute analytic Fock matrix element
@@ -489,7 +444,6 @@ contains
                             & neighbourList%iNeighbour, nNeighbourSK, &
                             & denseDesc%iAtomStart, iSparseStart, img2CentCell)
                 call blockSymmetrizeHS(h_numeric(:, :, iSpin), denseDesc%iAtomStart)
-                ! call symmetrizeHS(h_numeric(:, :, iSpin))
                 do j = 1, denseDesc%fullSize
                     do i = 1, denseDesc%fullSize
                         if (i /= j) then

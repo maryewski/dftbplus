@@ -1332,7 +1332,7 @@ contains
         if (tConverged .or. tStopScc) then
 
           if (allocated(this%openmmpolCalc)) then
-            call this%openmmpolCalc%bigMatrixElementDebugTest(env, this%rhoPrim, this%ints, this%orb,&
+            call this%openmmpolCalc%FockMatrixDebugTest(env, this%rhoPrim, this%ints, this%orb,&
                                                                  & this%species, this%q0, this%neighbourList,&
                                                                  & this%nNeighbourSK, this%iSparseStart,&
                                                                  & this%img2CentCell, this%denseDesc)

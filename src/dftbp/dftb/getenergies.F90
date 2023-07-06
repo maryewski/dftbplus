@@ -249,9 +249,9 @@ contains
       ! TODO: call getEnergies!
       ! energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%qmAtomsPotential
       ! call openmmpolCalc%addAtomEnergies(energy%atomQmmm)
-      energy%atomQmmm = energy%atomQmmm + openmmpolCalc%qmmmCouplingEnergyPerAtom
+      energy%atomQmmm = energy%atomQmmm + openmmpolCalc%qmmmCouplingPerAtom
+      energy%EqmmmCoupling = openmmpolCalc%electrostaticEnergy
     end if
-    energy%EqmmmCoupling = openmmpolCalc%electrostaticEnergy
 
     if (allocated(onSiteElements)) then
       call getEons(energy%atomOnSite, qBlock, qiBlock, q0, onSiteElements, species, orb)

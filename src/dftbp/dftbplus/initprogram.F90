@@ -1576,27 +1576,27 @@ contains
     if (allocated(input%ctrl%openmmpolInput)) then
       ! No periodic boundary conditions
       if (this%tPeriodic) then
-        call error("openmmpol calculations do not support periodic boundary conditions.")
+        call error("Periodic boundary conditions are not yet supported in openmmpol.")
       end if
 
       ! No REKS
       if (allocated(this%reks)) then
-        call error("REKS calculations with openmmpol are not supported")
+        call error("REKS DFTB with openmmpol is not supported.")
       end if
 
       ! No real-time electron dynamics
       if (allocated(input%ctrl%elecDynInp)) then
-        call error("Electron dynamics with openmmpol are not supported")
+        call error("Electron dynamics with openmmpol are not supported.")
       end if
 
       ! No linear response (yet)
       if (allocated(input%ctrl%lrespini)) then
-        call error("Linear response calculations with openmmpol are not yet supported")
+        call error("Linear response calculations with openmmpol are not yet implemented.")
       end if
 
       ! If sanity checks pass, initialize
       allocate(this%openmmpolCalc)
-      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%nAtom, this%species0, this%coord0)
+      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%species0, this%coord0)
     end if
 
   #:if WITH_TRANSPORT

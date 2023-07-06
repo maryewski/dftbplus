@@ -257,7 +257,7 @@ contains
       end if
       ! call openmmpolCalc%addFockMatrixPotential(atomPot(:, 1))
       !> DEBUG: numerical K-vector contribution
-      call openmmpolCalc%addFockMatrixPotential(atomPot(:, 1), qInput, q0, env, &
+      call openmmpolCalc%addPotential(atomPot(:, 1), qInput, q0, env, &
                                               & pSpecies0, neighbourList, img2CentCell, orb)
 
     end if

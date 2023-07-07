@@ -1594,6 +1594,10 @@ contains
         call error("Linear response calculations with openmmpol are not yet implemented.")
       end if
 
+      if (allocated(input%ctrl%rangeSepInp)) then
+        call error("Range separated calculations with openmmpol are not yet implemented.")
+      end if
+
       ! If sanity checks pass, initialize
       allocate(this%openmmpolCalc)
       call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%species0, this%coord0)

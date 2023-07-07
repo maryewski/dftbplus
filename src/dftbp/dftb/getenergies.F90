@@ -244,13 +244,10 @@ contains
       energy%eSolv = sum(energy%atomSolv(iAtInCentralRegion))
     end if
 
-    energy%atomQmmm = 0.0_dp
     if (allocated(openmmpolCalc)) then
-      ! TODO: call getEnergies!
-      ! energy%atomQmmm = energy%atomQmmm + sum(qOrb(:,:,1) - q0(:,:,1), dim=1) * openmmpolCalc%qmAtomsPotential
-      ! call openmmpolCalc%addAtomEnergies(energy%atomQmmm)
-      energy%atomQmmm = energy%atomQmmm + openmmpolCalc%qmmmCouplingPerAtom
-      energy%EqmmmCoupling = openmmpolCalc%electrostaticEnergy
+      energy%EqmmmElectrostatic = openmmpolCalc%electrostaticEnergy
+      energy%EqmmmBonded = openmmpolCalc%bondedEnergy
+      energy%EqmmmNonBonded = openmmpolCalc%nonBondedEnergy
     end if
 
     if (allocated(onSiteElements)) then
@@ -337,16 +334,22 @@ contains
     type(TEnergies), intent(inout) :: energy
 
     energy%Eelec = energy%EnonSCC + energy%ESCC + energy%Espin + energy%ELS + energy%Edftbu&
-        & + energy%Eext + energy%e3rd + energy%eOnSite + energy%ESolv + energy%Efock
+        & + energy%Eext + energy%e3rd + energy%eOnSite + energy%ESolv + energy%Efock&
+        & + energy%EqmmmElectrostatic
 
     energy%atomElec(:) = energy%atomNonSCC + energy%atomSCC + energy%atomSpin + energy%atomDftbu&
         & + energy%atomLS + energy%atomExt + energy%atom3rd + energy%atomOnSite &
-        & + energy%atomSolv + energy%atomQmmm
+        & + energy%atomSolv
+
     energy%atomTotal(:) = energy%atomElec + energy%atomRep + energy%atomDisp + energy%atomHalogenX
-    energy%Etotal = energy%Eelec + energy%Erep + energy%eDisp + energy%eHalogenX + energy%Eforcefield
+
+    energy%Etotal = energy%Eelec + energy%Erep + energy%eDisp + energy%eHalogenX + energy%EqmmmBonded&
+                  & + energy%EqmmmNonBonded
+
     energy%EMermin = energy%Etotal - sum(energy%TS)
     ! energy extrapolated to 0 K
     energy%Ezero = energy%Etotal - 0.5_dp * sum(energy%TS)
+
     energy%EGibbs = energy%EMermin + energy%pV
 
     ! Free energy of system, with contribution if attached to an electron reservoir

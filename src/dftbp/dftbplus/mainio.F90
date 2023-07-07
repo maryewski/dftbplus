@@ -3372,7 +3372,7 @@ contains
 
     !> Electronic part of QM/MM energy
     if (allocated(openmmpolCalc)) then
-      write(fd, format2U) 'QM/MM coupling energy', energy%EqmmmCoupling, 'H', energy%EqmmmCoupling * Hartree__eV, 'eV'
+      write(fd, format2U) 'QM/MM coupling energy', energy%EqmmmElectrostatic, 'H', energy%EqmmmElectrostatic * Hartree__eV, 'eV'
     end if
 
     if (tSolv) then
@@ -3398,7 +3398,7 @@ contains
 
     !> Pure molecular mechanical part of QM/MM energy
     if (allocated(openmmpolCalc)) then
-      write(fd, format2U) 'Force field energy', energy%Eforcefield, 'H', energy%Eforcefield * Hartree__eV, 'eV'
+      write(fd, format2U) 'Force field energy', energy%EqmmmBonded, 'H', energy%EqmmmBonded * Hartree__eV, 'eV'
     end if
 
     write(fd, format2U) 'Total energy', energy%Etotal, 'H', energy%Etotal * Hartree__eV, 'eV'

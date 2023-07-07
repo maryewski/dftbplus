@@ -14,7 +14,9 @@ module dftbp_extlibs_openmmpol
                                ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
                                ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH, &
-                               ommp_get_fixedelec_energy, ommp_get_polelec_energy
+                               ommp_get_fixedelec_energy, ommp_get_polelec_energy, ommp_get_full_bnd_energy, &
+                               ommp_get_vdw_energy
+                               
 #:endif
     use dftbp_io_message, only : error, warning
     use dftbp_common_environment, only : TEnvironment
@@ -41,16 +43,15 @@ module dftbp_extlibs_openmmpol
     #:endif
 
         integer :: solver
-        real(dp), allocatable :: qmmmCouplingPerAtom(:)
         real(dp), allocatable :: atomPotConst(:)
         real(dp), allocatable :: atomPotPolEnergy(:)
         real(dp), allocatable :: atomPotPolFock(:)
-        real(dp) :: forceFieldEnergy
+        real(dp) :: bondedEnergy
+        real(dp) :: nonBondedEnergy
         real(dp) :: electrostaticEnergy
     contains
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
-        procedure :: addAtomEnergies
         procedure :: addPotential
         procedure :: FockMatrixDebugTest
     end type
@@ -83,18 +84,15 @@ contains
             nQMatoms = size(atomTypes)
 
             this%solver = openmmpolInput%solver
-            this%forceFieldEnergy = 0.0_dp
-            allocate(this%qmmmCouplingPerAtom(nQMatoms))
-            this%qmmmCouplingPerAtom = 0.0_dp
+            this%electrostaticEnergy = 0.0_dp
+            this%bondedEnergy = 0.0_dp
+            this%nonBondedEnergy = 0.0_dp
             allocate(this%atomPotConst(nQMatoms))
             this%atomPotConst = 0.0_dp
             allocate(this%atomPotPolEnergy(nQMatoms))
             this%atomPotPolEnergy = 0.0_dp
             allocate(this%atomPotPolFock(nQMatoms))
             this%atomPotPolFock = 0.0_dp
-
-            this%forceFieldEnergy = 0.0_dp
-            this%electrostaticEnergy = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
                 call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
@@ -129,7 +127,6 @@ contains
             #:if WITH_OPENMMPOL
             call ommp_terminate_qm_helper(this%pQMHelper)
             call ommp_terminate(this%pSystem)
-            deallocate(this%qmmmCouplingPerAtom)
             deallocate(this%atomPotConst)
             deallocate(this%atomPotPolEnergy)
             deallocate(this%atomPotPolFock)
@@ -213,21 +210,20 @@ contains
             !> Store computed potential on QM atoms
             this%atomPotConst = -this%pQMHelper%V_m2n
             this%atomPotPolEnergy = -this%pQMHelper%V_p2n
-            !> If using AMOEBA, the Fock potential is equal to the mean for two sets of dipoles
+            !> If using AMOEBA, the potential is mean for two sets of dipoles
             if(this%pSystem%amoeba) then
                 this%atomPotPolFock = -(this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5_dp
             else
                 this%atomPotPolFock = -this%pQMHelper%V_p2n
             end if
-
-            !> Store coupling energy per atom
-            this%qmmmCouplingPerAtom = this%pQMHelper%qqm * -(this%atomPotConst + 0.5_dp * this%atomPotPolEnergy)
             
             !> Store total QM/MM electrostatic energy
-            ! this%electrostaticEnergy = ommp_get_fixedelec_energy(this%pSystem) &
-                                    !    + ommp_get_polelec_energy(this%pSystem) &
-            this%electrostaticEnergy = ommp_get_polelec_energy(this%pSystem) &
-                                       + sum(this%qmmmCouplingPerAtom)
+            this%electrostaticEnergy = ommp_get_polelec_energy(this%pSystem)   &
+                                     + ommp_get_fixedelec_energy(this%pSystem) &
+                                     + dot_product(this%pQMHelper%qqm,         &
+                                    & -(this%atomPotConst + 0.5_dp * this%atomPotPolEnergy))
+            this%bondedEnergy = ommp_get_full_bnd_energy(this%pSystem)
+            this%nonBondedEnergy = ommp_get_vdw_energy(this%pSystem)
 
             !> Debug: prints total QM/MM coupling energy on every step
             ! write(*, "(A,F12.6, A)") "E_QMMM: ", this%electrostaticEnergy * 627.5, " kJ/mol"
@@ -275,21 +271,6 @@ contains
 
         end subroutine
 
-        subroutine addAtomEnergies(this, energyArray)
-            class(TOMMPInterface) :: this
-
-            !> Array to write energy into
-            real(dp), intent(inout), allocatable :: energyArray(:)
-
-            #:if WITH_OPENMMPOL
-            !> Write energy per atom (charge Q * potential V)
-            ! energyArray = energyArray + this%pQMHelper%qqm * this%pQMHelper%V_m2n
-            #:else 
-            call notImplementedError
-            #:endif
-
-        end subroutine
-
         subroutine FockMatrixDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
                                                   & iSparseStart, img2CentCell, denseDesc)
             class(TOMMPInterface) :: this
@@ -326,9 +307,6 @@ contains
 
             !> Perturbed density matrix
             real(dp), allocatable :: dm_perturbed(:, :)
-
-            !> Dense overlap matrix
-            ! real(dp), allocatable :: overlap_dense(:, :)
 
             !> Analytical hamiltonian contributions (dense)
             real(dp), allocatable :: h_exact(:, :, :)
@@ -418,7 +396,6 @@ contains
                 call unpackHS(h_exact(:, :, iSpin), h_exact_sparse(:, iSpin), neighbourList%iNeighbour,&
                             & nNeighbourSK, denseDesc%iAtomStart, iSparseStart, img2CentCell)
                 call blockSymmetrizeHS(h_exact(:, :, iSpin), denseDesc%iAtomStart)
-                ! call symmetrizeHS(h_exact(:, :, iSpin))
             end do
 
             !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
@@ -462,10 +439,6 @@ contains
             !> Write numerical dense Fock matrix (spin channel 1)
             call write_array_newfile(h_numeric(:, :, 1), "qmmm_fock_numeric.txt")
 
-            !> Total difference:
-            ! write(*, *) "Total difference between analytic and numeric Hamiltonians:"
-            ! write(*, *) sum(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)))
-
             !> Write difference matrix
             call write_array_newfile(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)), "qmmm_fock_difference.txt")
             
@@ -481,7 +454,6 @@ contains
             deallocate(qOrb0)
             deallocate(qOrbPerturbed)
             deallocate(potential)
-            ! deallocate(overlap_dense)
             
             #:if WITH_OPENMMPOL
             #:else 

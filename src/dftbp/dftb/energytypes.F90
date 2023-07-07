@@ -77,11 +77,14 @@ module dftbp_dftb_energytypes
     !> Solvation free energy
     real(dp) :: ESolv = 0.0_dp
 
-    !> QM/MM coupling energy
-    real(dp) :: EqmmmCoupling = 0.0_dp
+    !> QM/MM density-matrix dependent energy
+    real(dp) :: EqmmmElectrostatic = 0.0_dp
 
-    !> Force field charge-independent energi
-    real(dp) :: Eforcefield = 0.0_dp
+    !> QM/MM force field (density-matrix independent) energy
+    real(dp) :: EqmmmBonded = 0.0_dp
+
+    !> QM/MM force field non-bonded (vdW and similar) energy
+    real(dp) :: EqmmmNonBonded = 0.0_dp
 
     !> Excitation energy
     real(dp) :: Eexcited = 0.0_dp
@@ -151,9 +154,6 @@ module dftbp_dftb_energytypes
     !> atom resolved 3rd order
     real(dp), allocatable :: atom3rd(:)
 
-    !> atom resolved QM/MM coupling energies
-    real(dp), allocatable :: atomQmmm(:)
-
     !> atom resolved solvation free energy
     real(dp), allocatable :: atomSolv(:)
 
@@ -201,7 +201,6 @@ contains
     allocate(this%atomOnSite(nAtom))
     allocate(this%atomHalogenX(nAtom))
     allocate(this%atom3rd(nAtom))
-    allocate(this%atomQmmm(nAtom))
     allocate(this%atomSolv(nAtom))
     allocate(this%atomTotal(nAtom))
     this%atomRep(:) = 0.0_dp
@@ -216,7 +215,6 @@ contains
     this%atomOnSite(:) = 0.0_dp
     this%atomHalogenX(:) = 0.0_dp
     this%atom3rd(:) = 0.0_dp
-    this%atomQmmm(:) = 0.0_dp
     this%atomSolv(:) = 0.0_dp
     this%atomTotal(:) = 0.0_dp
 
@@ -233,8 +231,9 @@ contains
     this%EOnSite = 0.0_dp
     this%EHalogenX = 0.0_dp
     this%E3rd = 0.0_dp
-    this%EqmmmCoupling = 0.0_dp
-    this%Eforcefield = 0.0_dp
+    this%EqmmmElectrostatic = 0.0_dp
+    this%EqmmmBonded = 0.0_dp
+    this%EqmmmNonBonded = 0.0_dp
     this%ESolv = 0.0_dp
     this%Etotal = 0.0_dp
     this%EMermin = 0.0_dp

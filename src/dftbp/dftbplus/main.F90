@@ -25,7 +25,6 @@ module dftbp_dftbplus_main
   use dftbp_dftb_determinants, only : TDftbDeterminants, TDftbDeterminants_init, determinants
   use dftbp_dftb_dftbplusu, only : TDftbU
   use dftbp_dftb_dispersions, only : TDispersionIface
-  use dftbp_dftb_elstatpot, only : TElStatPotentials
   use dftbp_dftb_energytypes, only : TEnergies
   use dftbp_dftb_etemp, only : electronFill, Efilling
   use dftbp_dftb_extfields, only : addUpExternalField
@@ -48,7 +47,7 @@ module dftbp_dftbplus_main
   use dftbp_dftb_rangeseparated, only : TRangeSepFunc
   use dftbp_dftb_repulsive_repulsive, only : TRepulsive
   use dftbp_dftb_scc, only : TScc
-  use dftbp_dftb_shift, only : addShift
+  use dftbp_dftb_shift, only : addShift, addAtomicMultipoleShift
   use dftbp_dftb_slakocont, only : TSlakoCont
   use dftbp_dftb_sparse2dense, only : unpackHPauli, unpackHS, blockSymmetrizeHS, packHS,&
       & blockSymmetrizeHS, packHS, SymmetrizeHS, unpackHelicalHS, packerho, blockHermitianHS,&
@@ -301,9 +300,9 @@ contains
               & this%eigVecsReal, this%eigvecsCplx, this%ints%hamiltonian, this%ints%overlap,&
               & this%orb, this%nAtom, this%species, this%neighbourList, this%nNeighbourSK,&
               & this%denseDesc, this%iSparseStart, this%img2CentCell, this%coord, this%scc,&
-              & this%maxSccIter, this%sccTol, this%isSccConvRequired, this%nMixElements,&
-              & this%nIneqOrb, this%iEqOrbitals, this%tempElec, this%Ef, this%spinW,&
-              & this%thirdOrd, this%dftbU, this%iEqBlockDftbu, this%onSiteElements,&
+              & this%maxPerturbIter, this%perturbSccTol, this%isPerturbConvRequired,&
+              & this%nMixElements, this%nIneqOrb, this%iEqOrbitals, this%tempElec, this%Ef,&
+              & this%spinW, this%thirdOrd, this%dftbU, this%iEqBlockDftbu, this%onSiteElements,&
               & this%iEqBlockOnSite, this%rangeSep, this%nNeighbourLC, this%pChrgMixer,&
               & this%kPoint, this%kWeight, this%iCellVec, this%cellVec, this%polarisability,&
               & this%dEidE, this%dqOut, this%neFermi, this%dEfdE, errStatus, this%dynRespEFreq)
@@ -476,9 +475,9 @@ contains
             & this%eigVecsReal, this%eigvecsCplx, this%ints%hamiltonian, this%ints%overlap,&
             & this%orb, this%nAtom, this%species, this%neighbourList, this%nNeighbourSK,&
             & this%denseDesc, this%iSparseStart, this%img2CentCell, this%coord, this%scc,&
-            & this%maxSccIter, this%sccTol, this%isSccConvRequired, this%nMixElements,&
-            & this%nIneqOrb, this%iEqOrbitals, this%tempElec, this%Ef, this%spinW,&
-            & this%thirdOrd, this%dftbU, this%iEqBlockDftbu, this%onSiteElements,&
+            & this%maxPerturbIter, this%perturbSccTol, this%isPerturbConvRequired,&
+            & this%nMixElements, this%nIneqOrb, this%iEqOrbitals, this%tempElec, this%Ef,&
+            & this%spinW, this%thirdOrd, this%dftbU, this%iEqBlockDftbu, this%onSiteElements,&
             & this%iEqBlockOnSite, this%rangeSep, this%nNeighbourLC, this%pChrgMixer, this%kPoint,&
             & this%kWeight, this%iCellVec, this%cellVec, this%polarisability, this%dEidE,&
             & this%dqOut, this%neFermi, this%dEfdE, errStatus, this%dynRespEFreq)
@@ -501,12 +500,12 @@ contains
             & this%fdDetailedOut, this%filling, this%eigen, this%eigVecsReal, this%eigvecsCplx,&
             & this%ints%hamiltonian, this%ints%overlap, this%orb, this%nAtom, this%species,&
             & this%neighbourList, this%nNeighbourSK, this%denseDesc, this%iSparseStart,&
-            & this%img2CentCell, this%isRespKernelRPA, this%scc, this%maxSccIter, this%sccTol,&
-            & this%isSccConvRequired, this%nMixElements, this%nIneqOrb, this%iEqOrbitals,&
-            & this%tempElec, this%Ef, this%spinW, this%thirdOrd, this%dftbU, this%iEqBlockDftbu,&
-            & this%onSiteElements, this%iEqBlockOnSite, this%rangeSep, this%nNeighbourLC,&
-            & this%pChrgMixer, this%kPoint, this%kWeight, this%iCellVec, this%cellVec,&
-            & this%neFermi, errStatus, this%dynKernelFreq, this%tHelical, this%coord)
+            & this%img2CentCell, this%isRespKernelRPA, this%scc, this%maxPerturbIter,&
+            & this%perturbSccTol, this%isPerturbConvRequired, this%nMixElements, this%nIneqOrb,&
+            & this%iEqOrbitals, this%tempElec, this%Ef, this%spinW, this%thirdOrd, this%dftbU,&
+            & this%iEqBlockDftbu, this%onSiteElements, this%iEqBlockOnSite, this%rangeSep,&
+            & this%nNeighbourLC, this%pChrgMixer, this%kPoint, this%kWeight, this%iCellVec,&
+            & this%cellVec, this%neFermi, errStatus, this%dynKernelFreq, this%tHelical, this%coord)
         if (errStatus%hasError()) then
           call error(errStatus%message)
         end if
@@ -1469,11 +1468,9 @@ contains
       call getDipoleMoment(this%qOutput, this%q0, this%multipoleOut%dipoleAtom, this%coord0,&
           & this%dipoleMoment(:,this%deltaDftb%iDeterminant), this%iAtInCentralRegion)
     #:block DEBUG_CODE
-      if (this%hamiltonianType == hamiltonianTypes%dftb) then
-        call checkDipoleViaHellmannFeynman(env, this%rhoPrim, this%q0, this%coord0, this%ints,&
-            & this%orb, this%neighbourList, this%nNeighbourSk, this%species, this%iSparseStart,&
-            & this%img2CentCell, this%eFieldScaling)
-      end if
+      call checkDipoleViaHellmannFeynman(env, this%rhoPrim, this%q0, this%coord0, this%ints,&
+          & this%orb, this%neighbourList, this%nNeighbourSk, this%species, this%iSparseStart,&
+          & this%img2CentCell, this%eFieldScaling, this%hamiltonianType, this%nDipole)
     #:endblock DEBUG_CODE
     end if
 
@@ -4709,12 +4706,13 @@ contains
       end do
     end if
 
+
   end subroutine getDipoleMoment
 
 
   !> Prints dipole moment calculated by the derivative of H with respect to the external field.
   subroutine checkDipoleViaHellmannFeynman(env, rhoPrim, q0, coord0, ints, orb, neighbourList,&
-      & nNeighbourSK, species, iSparseStart, img2CentCell, eFieldScaling)
+      & nNeighbourSK, species, iSparseStart, img2CentCell, eFieldScaling, iHamiltonianType, nDipole)
 
     !> Environment settings
     type(TEnvironment), intent(in) :: env
@@ -4752,7 +4750,14 @@ contains
     !> Instance of electric/dipole scaling due to any dielectric media effects
     class(TScaleExtEField), intent(in) :: eFieldScaling
 
+    !> Hamiltonian type
+    integer, intent(in) :: iHamiltonianType
+
+    !> Number of atomic dipole moment components
+    integer, intent(in) :: nDipole
+
     real(dp), allocatable :: hprime(:,:), dipole(:,:), potentialDerivative(:,:)
+    real(dp), allocatable :: potentialGradDeriv(:,:)
     integer :: nAtom, sparseSize, iAt, iCart
 
     sparseSize = size(ints%overlap)
@@ -4763,19 +4768,36 @@ contains
     write(stdOut,*)
     write(stdOut, "(A)", advance='no') 'Hellmann Feynman dipole:'
 
+  #:block DEBUG_CODE
+    if (nDipole > 0) then
+      @:ASSERT(iHamiltonianType == hamiltonianTypes%xtb)
+      allocate(potentialGradDeriv(nDipole, nAtom))
+    end if
+  #:endblock DEBUG_CODE
+
     ! loop over directions
     do iCart = 1, 3
       potentialDerivative(:,:) = 0.0_dp
       ! Potential from dH/dE
       potentialDerivative(:,1) = -eFieldScaling%scaledExtEField(coord0(iCart,:))
       hprime(:,:) = 0.0_dp
-      dipole(:,:) = 0.0_dp
-      call addShift(env, hprime, ints%overlap, nNeighbourSK, neighbourList%iNeighbour, species, orb,&
-          & iSparseStart, nAtom, img2CentCell, potentialDerivative, .true.)
 
+      call addShift(env, hprime, ints%overlap, nNeighbourSK, neighbourList%iNeighbour, species,&
+          & orb, iSparseStart, nAtom, img2CentCell, potentialDerivative, .true.)
+
+      if (nDipole > 0) then
+        potentialGradDeriv(:,:) = 0.0_dp
+        potentialGradDeriv(iCart,:) = -eFieldScaling%scaledExtEField(1.0_dp)
+
+        call addAtomicMultipoleShift(hPrime, ints%dipoleBra, ints%dipoleKet, nNeighbourSK, &
+            & neighbourList%iNeighbour, species, orb, iSparseStart, nAtom, img2CentCell, &
+            & potentialGradDeriv)
+      end if
+
+      dipole(:,:) = 0.0_dp
       ! evaluate <psi| dH/dE | psi> = Tr_part rho dH/dE
-      call mulliken(env, dipole, hprime(:,1), rhoPrim(:,1), orb, neighbourList%iNeighbour, nNeighbourSK,&
-          & img2CentCell, iSparseStart)
+      call mulliken(env, dipole, hprime(:,1), rhoPrim(:,1), orb, neighbourList%iNeighbour,&
+          & nNeighbourSK, img2CentCell, iSparseStart)
 
       ! add nuclei term for derivative wrt E
       do iAt = 1, nAtom

@@ -17,7 +17,7 @@ module dftbp_dftbplus_initprogram
       & Bohr__nm, Hartree__kJ_mol, Boltzmann
   use dftbp_common_envcheck, only : checkStackSize
   use dftbp_common_environment, only : TEnvironment, globalTimers
-  use dftbp_common_file, only : TFileDescr, setDefaultFileAccess, clearFile
+  use dftbp_common_file, only : TFileDescr, setDefaultBinaryAccess, clearFile
   use dftbp_common_globalenv, only : stdOut, withMpi
   use dftbp_common_hamiltoniantypes, only : hamiltonianTypes
   use dftbp_common_status, only : TStatus
@@ -85,7 +85,7 @@ module dftbp_dftbplus_initprogram
   use dftbp_geoopt_geoopt, only : TGeoOpt, geoOptTypes, reset, init
   use dftbp_geoopt_lbfgs, only : TLbfgs, TLbfgs_init
   use dftbp_geoopt_package, only : TOptimizer, createOptimizer, TOptTolerance
-  use dftbp_geoopt_steepdesc, only : TSteepDesc
+  use dftbp_geoopt_deprecated_steepdesc, only : TSteepDescDepr
   use dftbp_io_commonformats, only : format2Ue
   use dftbp_io_message, only : error, warning
   use dftbp_io_taggedoutput, only : TTaggedWriter, TTaggedWriter_init
@@ -504,6 +504,16 @@ module dftbp_dftbplus_initprogram
 
     !> Density functional tight binding perturbation theory
     logical :: doPerturbation = .false.
+
+    !> Self-consistency tolerance for perturbation (if SCC)
+    real(dp) :: perturbSccTol = 0.0_dp
+
+    !> Maximum iteration for self-consistency in the perturbation routines
+    integer :: maxPerturbIter = 0
+
+    !> Require converged perturbation (if true, terminate on failure, otherwise return NaN for
+    !> non-converged)
+    logical :: isPerturbConvRequired = .true.
 
     !> Density functional tight binding perturbation for each geometry step
     logical :: doPerturbEachGeom = .false.
@@ -1177,13 +1187,13 @@ contains
     type(TConjGrad), allocatable :: pConjGrad
 
     !> Steepest descent driver
-    type(TSteepDesc), allocatable :: pSteepDesc
+    type(TSteepDescDepr), allocatable :: pSteepDesc
 
     !> Conjugate gradient driver
     type(TConjGrad), allocatable :: pConjGradLat
 
     !> Steepest descent driver
-    type(TSteepDesc), allocatable :: pSteepDescLat
+    type(TSteepDescDepr), allocatable :: pSteepDescLat
 
     !> Gradient DIIS driver
     type(TDIIS), allocatable :: pDIIS
@@ -1288,8 +1298,8 @@ contains
     call env%globalTimer%startTimer(globalTimers%globalInit)
 
     ! Set the same access for readwrite as for write (we do not open any files in readwrite mode)
-    call setDefaultFileAccess(input%ctrl%fileAccessTypes(1), input%ctrl%fileAccessTypes(2),&
-        & input%ctrl%fileAccessTypes(2))
+    call setDefaultBinaryAccess(input%ctrl%binaryAccessTypes(1), input%ctrl%binaryAccessTypes(2),&
+        & input%ctrl%binaryAccessTypes(2))
 
     ! Basic variables
     this%hamiltonianType = input%ctrl%hamiltonian
@@ -1383,6 +1393,10 @@ contains
 
     ! Brillouin zone sampling
     if (this%tPeriodic .or. this%tHelical) then
+      if (input%ctrl%poorKSampling) then
+        call warning("The suplied k-points are probably not accurate for properties requiring&
+            & integration over the Brillouin zone")
+      end if
       this%nKPoint = input%ctrl%nKPoint
       allocate(this%kPoint(size(input%ctrl%KPoint,dim=1), this%nKPoint))
       allocate(this%kWeight(this%nKPoint))
@@ -1452,7 +1466,7 @@ contains
     this%isSccConvRequired = (input%ctrl%isSccConvRequired .and. this%tSccCalc)
 
     if (this%tSccCalc) then
-      this%maxSccIter = input%ctrl%maxIter
+      this%maxSccIter = input%ctrl%maxSccIter
     else
       this%maxSccIter = 1
     end if
@@ -1650,6 +1664,10 @@ contains
       this%nExtChrg = input%ctrl%nExtChrg
       this%tExtChrg = this%nExtChrg > 0
       this%tStress = this%tStress .and. .not. this%tExtChrg
+
+      if (this%tExtChrg .and. this%hamiltonianType == hamiltonianTypes%xtb) then
+        call error("External charges not currently supported for xTB hamiltonians")
+      end if
 
       ! Longest cut-off including the softening part of gamma
       this%cutOff%mCutOff = max(this%cutOff%mCutOff, this%scc%getCutOff())
@@ -2005,8 +2023,7 @@ contains
 
       allocate(this%filter)
       call TFilter_init(this%filter, input%ctrl%geoOpt%filter, this%coord0, this%latVec)
-      call createOptimizer(input%ctrl%geoOpt%optimiser, this%filter%getDimension(),&
-          & this%geoOpt)
+      call createOptimizer(input%ctrl%geoOpt%optimiser, this%filter%getDimension(), this%geoOpt)
       this%optTol = input%ctrl%geoOpt%tolerance
       allocate(this%gcurr(this%filter%getDimension()))
       allocate(this%displ(this%filter%getDimension()))
@@ -2305,7 +2322,10 @@ contains
       end if
       allocate(this%electrostatPot)
       call TElStatPotentials_init(this%electrostatPot, input%ctrl%elStatPotentialsInp,&
-          & allocated(this%eField) .or. this%tExtChrg)
+          & allocated(this%eField) .or. this%tExtChrg, this%hamiltonianType, errStatus)
+      if (errStatus%hasError()) then
+        call error(errStatus%message)
+      end if
     end if
 
     if (allocated(input%ctrl%pipekMezeyInp)) then
@@ -2318,30 +2338,34 @@ contains
           & spin orbit calculations")
     end if
 
-    this%doPerturbation = input%ctrl%doPerturbation
+    this%doPerturbation = allocated(input%ctrl%perturbInp)
     this%doPerturbEachGeom = this%tDerivs .and. this%doPerturbation ! needs work
 
     if (this%doPerturbation .or. this%doPerturbEachGeom) then
 
+      this%perturbSccTol = input%ctrl%perturbInp%perturbSccTol
+      this%maxPerturbIter = input%ctrl%perturbInp%maxPerturbIter
+      this%isPerturbConvRequired = input%ctrl%perturbInp%isPerturbConvRequired
+
       allocate(this%response)
       call TResponse_init(this%response, responseSolverTypes%spectralSum, this%tFixEf,&
-          & input%ctrl%tolDegenDFTBPT, input%ctrl%etaFreq)
+          & input%ctrl%perturbInp%tolDegenDFTBPT, input%ctrl%perturbInp%etaFreq)
 
-      this%isEResp = allocated(input%ctrl%dynEFreq)
+      this%isEResp = allocated(input%ctrl%perturbInp%dynEFreq)
       if (this%isEResp) then
-        call move_alloc(input%ctrl%dynEFreq, this%dynRespEFreq)
+        call move_alloc(input%ctrl%perturbInp%dynEFreq, this%dynRespEFreq)
         if (this%isRangeSep .and. any(this%dynRespEFreq /= 0.0_dp)) then
           call error("Finite frequency range separated calculation not currently supported")
         end if
       end if
 
-      this%isKernelResp = allocated(input%ctrl%dynKernelFreq)
+      this%isKernelResp = allocated(input%ctrl%perturbInp%dynKernelFreq)
       if (this%isKernelResp) then
-        call move_alloc(input%ctrl%dynKernelFreq, this%dynKernelFreq)
+        call move_alloc(input%ctrl%perturbInp%dynKernelFreq, this%dynKernelFreq)
         if (this%isRangeSep .and. any(this%dynKernelFreq /= 0.0_dp)) then
           call error("Finite frequency range separated calculation not currently supported")
         end if
-        this%isRespKernelRPA = input%ctrl%isRespKernelRPA
+        this%isRespKernelRPA = input%ctrl%perturbInp%isRespKernelRPA
         if (.not.this%isRespKernelRPA .and. .not.this%tSccCalc) then
           call error("RPA option only relevant for SCC calculations of response kernel")
         end if
@@ -2356,8 +2380,7 @@ contains
         call error("Currently the perturbation expressions for NEGF are not implemented")
       end if
       if (.not. this%electronicSolver%providesEigenvals) then
-        call error("Perturbation expression for polarisability require eigenvalues and&
-            & eigenvectors")
+        call error("Perturbation expressions currently require eigenvalues and eigenvectors")
       end if
 
       if (this%t3rd) then
@@ -2452,7 +2475,7 @@ contains
       end if
 
       call LinResp_init(this%linearResponse, input%ctrl%lrespini, this%nAtom, this%nEl(1),&
-          & this%onSiteElements)
+          & this%nSpin, this%onSiteElements)
 
     end if
 
@@ -3778,7 +3801,6 @@ contains
 
 
   !> Create equivalency relations
-  ! Note, this routine should not be called
   subroutine setEquivalencyRelations(this)
 
     !> Instance
@@ -5456,6 +5478,7 @@ contains
         call error("Negative energy window for excitations")
       end if
     end if
+
 
   end subroutine ensureLinRespConditions
 

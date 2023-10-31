@@ -11,6 +11,11 @@ Unreleased
 Added
 -----
 
+- Electronic constraints on arbitrary regions, targeting the electronic ground
+  state by determining a self-consistent constraint potential
+  (restricted to Mulliken populations at the moment)
+
+- CI optimizer to locate conical intersections
 
 Changed
 -------
@@ -19,6 +24,13 @@ Changed
 Fixed
 -----
 
+- Memory leak for MPI enabled code with many geometric steps.
+
+- API call to setExternalCharges was not marking calculation to be
+  re-evaluated.
+
+- Calls to setExternalCharges were failing if number of external charges
+  changes.
 
 23.1 (2023-07-05)
 =================
@@ -531,3 +543,4 @@ Fixed
   modes.
 
 - Make geometry writing in gen and xyz files consistent.
+

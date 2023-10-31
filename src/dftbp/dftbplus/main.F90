@@ -81,7 +81,7 @@ module dftbp_dftbplus_main
   use dftbp_elecsolvers_elecsolvers, only : TElectronicSolver
   use dftbp_elecsolvers_elecsolvertypes, only : electronicSolverTypes
   use dftbp_extlibs_plumed, only : TPlumedCalc, TPlumedCalc_final
-  use dftbp_extlibs_openmmpol, only: TOMMPInterface, TOMMPInterface_terminate
+  use dftbp_extlibs_openmmpol, only: TOMMPInterface, TOMMPInterface_terminate, writeOutput
   use dftbp_extlibs_tblite, only : TTBLite
   use dftbp_geoopt_geoopt, only : TGeoOpt, next, reset
   use dftbp_io_message, only : error, warning
@@ -948,6 +948,9 @@ contains
           & this%tSpinOrbit, this%tSccCalc, allocated(this%onSiteElements),&
           & this%iAtInCentralRegion, this%electronicSolver, allocated(this%halogenXCorrection),&
           & this%isRangeSep, allocated(this%thirdOrd), allocated(this%solvation))
+      if (allocated(this%openmmpolCalc)) then
+        call this%openmmpolCalc%writeOutput()
+      end if
     end if
 
   end subroutine sccLoopWriting

@@ -15,7 +15,9 @@ module dftbp_extlibs_openmmpol
                                ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
                                ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH, &
                                ommp_get_fixedelec_energy, ommp_get_polelec_energy, ommp_get_full_bnd_energy, &
-                               ommp_get_vdw_energy
+                               ommp_get_vdw_energy, ommp_qm_helper_init_vdw_prm, ommp_qm_helper_vdw_energy,&
+                               ommp_qm_helper_set_attype, ommp_qm_helper_vdw_energy, ommp_print_summary_to_file, &
+                               OMMP_SOLVER_NONE
                                
 #:endif
     use dftbp_io_message, only : error, warning
@@ -23,7 +25,7 @@ module dftbp_extlibs_openmmpol
     use dftbp_dftb_periodic, only : TNeighbourList
     use dftbp_type_commontypes, only : TOrbitals
     use dftbp_dftb_charges, only : getSummedCharges
-    use dftbp_common_accuracy, only : dp
+    use dftbp_common_accuracy, only : dp, mc
     !> debug
     use dftbp_type_integral, only : TIntegral
     use dftbp_dftb_sparse2dense, only : unpackHS, blockSymmetrizeHS, symmetrizeHS
@@ -31,10 +33,9 @@ module dftbp_extlibs_openmmpol
     use dftbp_dftb_populations, only : mulliken
     use dftbp_dftb_shift, only : addShift
     use dftbp_type_densedescr, only : TDenseDescr
-    !> end debug
+    !> debug end
     implicit none
 
-! SECTION: type definitions
     type :: TOMMPInterface
 
     #:if WITH_OPENMMPOL
@@ -53,35 +54,53 @@ module dftbp_extlibs_openmmpol
         ! procedure :: updateQMCoords
         procedure :: updateQMCharges
         procedure :: addPotential
+        procedure :: writeOutput
         procedure :: FockMatrixDebugTest
     end type
 
 type :: TOMMPInput
+    !> Can be "Tinker" or "mmp", determines which
+    !  init routine is used
     character(:), allocatable :: inputFormat
+    !> Path to the MM geometry file
     character(:), allocatable :: geomFilename
-    character(:), allocatable :: paramsFilename
+    !> Path to a separate .prm or .key file with
+    ! Tinker-style parameters (if present)
+    character(:), allocatable :: mmParamsFilename
+    !> Determines which solver is utilized by openmmpol
+    !  to compute polarization dipoles
     integer :: solver
+    !> Provides "atom types" for QM atoms
+    !  (used to get vdW parameters for QM/MM interaction)
+    integer, allocatable :: qmAtomTypes(:)
+    !> Path to .prm or .key file that contains
+    ! "atom type" specifications that are to be used
+    ! for QM atoms
+    ! (used to get vdW parameters for QM/MM interaction)
+    character(:), allocatable :: qmParamsFilename
+
 end type
 
 public TOMMPInterface, TOMMPInterface_init
 
 contains 
 
-! SECTION: subroutines
-        subroutine TOMMPInterface_init(this, openmmpolInput, atomTypes, qmAtomCoords)
+        subroutine TOMMPInterface_init(this, openmmpolInput, atomNames, atomTypes, qmAtomCoords)
             type(TOMMPInterface), intent(out) :: this
             type(TOMMPInput), intent(in) :: openmmpolInput
-            integer, intent(in), dimension(:) :: atomTypes
-            real(dp), dimension(:, :), intent(in) :: qmAtomCoords
-
+            character(len=*), intent(in) :: atomNames(:)
+            integer, intent(in) :: atomTypes(:)
+            real(dp), intent(in) :: qmAtomCoords(:, :)
             !> N of QM atoms
             integer :: nQMatoms
-
             !> Dummy charge array for initialization
             real(dp), allocatable, dimension(:) :: chargesDummy
+            integer, allocatable :: zVector(:) 
 
             #:if WITH_OPENMMPOL
             nQMatoms = size(atomTypes)
+            allocate(zVector(nQMatoms))
+            call getZvector(zVector, atomNames, atomTypes)
 
             this%solver = openmmpolInput%solver
             this%electrostaticEnergy = 0.0_dp
@@ -95,9 +114,9 @@ contains
             this%atomPotPolFock = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
-                call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%paramsFilename)
+                call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%mmParamsFilename)
             else if (openmmpolInput%inputFormat == "mmp") then
-                call ommp_init_mmp(this%pSystem, openmmpolInput%paramsFilename)
+                call ommp_init_mmp(this%pSystem, openmmpolInput%mmParamsFilename)
             else
                 call error("Bad openmmpol input format supplied to initializer!")
             end if
@@ -108,13 +127,24 @@ contains
             
             allocate(chargesDummy(nQMatoms))
             chargesDummy = 0.0_dp
-            call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, chargesDummy, atomTypes)
+            call ommp_init_qm_helper(this%pQMHelper, nQMatoms, qmAtomCoords, chargesDummy, zVector)
             deallocate(chargesDummy)
+            deallocate(zVector)
 
             ! If using AMOEBA, request potentials from the P set of dipoles
             if(this%pSystem%amoeba) then
                 this%pQMHelper%V_pp2n_req = .true.
             end if
+
+            ! Init vdW part of the QM/MM interaction
+            call ommp_qm_helper_set_attype(this%pQMHelper, openmmpolInput%qmAtomTypes)
+            call ommp_qm_helper_init_vdw_prm(this%pQMHelper, openmmpolInput%qmParamsFilename)
+
+            !> Evaluate bonded and vdW terms at initial geometry
+            this%bondedEnergy = ommp_get_full_bnd_energy(this%pSystem)
+            this%nonBondedEnergy = ommp_get_vdw_energy(this%pSystem) + &
+                                  &ommp_qm_helper_vdw_energy(this%pQMHelper, this%pSystem)
+
 
             #:else 
             call notImplementedError
@@ -145,6 +175,9 @@ contains
             this%pSystem%eel%D2dgg_done = .false.
             this%pQMHelper%E_n2p_done = .false.
 
+            this%bondedEnergy = ommp_get_full_bnd_energy(this%pSystem)
+            this%nonBondedEnergy = ommp_get_vdw_energy(this%pSystem) + &
+                                  &ommp_qm_helper_vdw_energy(this%pQMHelper, this%pSystem)
             #:else 
             call notImplementedError
             #:endif
@@ -181,8 +214,6 @@ contains
             !  convention, therefore we need a sign inversion when passing them to openmmpol
             call getSummedCharges(species, orb, qq, q0=q0, dQatom=this%pQMHelper%qqm)
             this%pQMHelper%qqm = -this%pQMHelper%qqm
-            !write(*, *) "Charge supplied:"
-            !write(*, *) this%pQMHelper%qqm
 
             !> Compute electric field produced by QM part of the system on MM atoms
             this%pQMHelper%E_n2p_done = .false. 
@@ -196,7 +227,9 @@ contains
 
             call ommp_set_external_field(this%pSystem, &
                                          this%pQMHelper%E_n2p, &
-                                         this%solver, .true.)
+                                         this%solver, &
+                                         OMMP_SOLVER_NONE, &
+                                         .true.)
 
             !> Compute electostatic potential produced by MM+Pol part on QM nuclei
             this%pQMHelper%V_p2n_done = .false. 
@@ -222,11 +255,7 @@ contains
                                      + ommp_get_fixedelec_energy(this%pSystem) &
                                      + dot_product(this%pQMHelper%qqm,         &
                                     & -(this%atomPotConst + 0.5_dp * this%atomPotPolEnergy))
-            this%bondedEnergy = ommp_get_full_bnd_energy(this%pSystem)
-            this%nonBondedEnergy = ommp_get_vdw_energy(this%pSystem)
-
-            !> Debug: prints total QM/MM coupling energy on every step
-            ! write(*, "(A,F12.6, A)") "E_QMMM: ", this%electrostaticEnergy * 627.5, " kJ/mol"
+            
 
             #:else 
             call notImplementedError
@@ -266,6 +295,18 @@ contains
             !> Add potential from openmmpol to the vector of potentials
             shiftPerAtom = shiftPerAtom + this%atomPotConst + this%atomPotPolFock
             #:else 
+            call notImplementedError
+            #:endif
+
+        end subroutine
+
+        ! Write output
+        subroutine writeOutput(this)
+            class(TOMMPInterface) :: this
+
+            #:if WITH_OPENMMPOL
+            call ommp_print_summary_to_file(this%pSystem, "openmmpol.out")
+            #:else
             call notImplementedError
             #:endif
 
@@ -336,7 +377,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Numerical differention step
-            real(dp), parameter :: diff_step = 1e-7_dp
+            real(dp), parameter :: diff_step = 1e-6_dp
 
             !> Iterator indices for rank 2 martrices
             integer :: i, j
@@ -529,6 +570,207 @@ contains
             close(io)
 
         end subroutine write_array_newfile
+
+        ! Given a species vector and a list of atom names,
+        ! construct a vector of nuclear charges
+        subroutine getZvector(zVector, speciesNames, species)
+            !> Nuclear charge vector
+            integer, intent(inout) :: zVector(:)
+            !> Atom type names
+            character(len=*), intent(in) :: speciesNames(:)
+            !> Species in internal format
+            integer, intent(in) :: species(:)
+        
+            !> Iterator index
+            integer :: i
+            !> Current species ordinal number
+            integer :: currentSpecies
+        
+            do i = 1, size(species)
+                currentSpecies = species(i)
+                select case (speciesNames(currentSpecies))
+                case ('H')
+                    zVector(i) = 1
+                case ('He')
+                    zVector(i) = 2
+                case ('Li')
+                    zVector(i) = 3
+                case ('Be')
+                    zVector(i) = 4
+                case ('B')
+                    zVector(i) = 5
+                case ('C')
+                    zVector(i) = 6
+                case ('N')
+                    zVector(i) = 7
+                case ('O')
+                    zVector(i) = 8
+                case ('F')
+                    zVector(i) = 9
+                case ('Ne')
+                    zVector(i) = 10
+                case ('Na')
+                    zVector(i) = 11
+                case ('Mg')
+                    zVector(i) = 12
+                case ('Al')
+                    zVector(i) = 13
+                case ('Si')
+                    zVector(i) = 14
+                case ('P')
+                    zVector(i) = 15
+                case ('S')
+                    zVector(i) = 16
+                case ('Cl')
+                    zVector(i) = 17
+                case ('Ar')
+                    zVector(i) = 18
+                case ('K')
+                    zVector(i) = 19
+                case ('Ca')
+                    zVector(i) = 20
+                case ('Sc')
+                    zVector(i) = 21
+                case ('Ti')
+                    zVector(i) = 22
+                case ('V')
+                    zVector(i) = 23
+                case ('Cr')
+                    zVector(i) = 24
+                case ('Mn')
+                    zVector(i) = 25
+                case ('Fe')
+                    zVector(i) = 26
+                case ('Co')
+                    zVector(i) = 27
+                case ('Ni')
+                    zVector(i) = 28
+                case ('Cu')
+                    zVector(i) = 29
+                case ('Zn')
+                    zVector(i) = 30
+                case ('Ga')
+                    zVector(i) = 31
+                case ('Ge')
+                    zVector(i) = 32
+                case ('As')
+                    zVector(i) = 33
+                case ('Se')
+                    zVector(i) = 34
+                case ('Br')
+                    zVector(i) = 35
+                case ('Kr')
+                    zVector(i) = 36
+                case ('Rb')
+                    zVector(i) = 37
+                case ('Sr')
+                    zVector(i) = 38
+                case ('Y')
+                    zVector(i) = 39
+                case ('Zr')
+                    zVector(i) = 40
+                case ('Nb')
+                    zVector(i) = 41
+                case ('Mo')
+                    zVector(i) = 42
+                case ('Tc')
+                    zVector(i) = 43
+                case ('Ru')
+                    zVector(i) = 44
+                case ('Rh')
+                    zVector(i) = 45
+                case ('Pd')
+                    zVector(i) = 46
+                case ('Ag')
+                    zVector(i) = 47
+                case ('Cd')
+                    zVector(i) = 48
+                case ('In')
+                    zVector(i) = 49
+                case ('Sn')
+                    zVector(i) = 50
+                case ('Sb')
+                    zVector(i) = 51
+                case ('Te')
+                    zVector(i) = 52
+                case ('I')
+                    zVector(i) = 53
+                case ('Xe')
+                    zVector(i) = 54
+                case ('Cs')
+                    zVector(i) = 55
+                case ('Ba')
+                    zVector(i) = 56
+                case ('La')
+                    zVector(i) = 57
+                case ('Ce')
+                    zVector(i) = 58
+                case ('Pr')
+                    zVector(i) = 59
+                case ('Nd')
+                    zVector(i) = 60
+                case ('Pm')
+                    zVector(i) = 61
+                case ('Sm')
+                    zVector(i) = 62
+                case ('Eu')
+                    zVector(i) = 63
+                case ('Gd')
+                    zVector(i) = 64
+                case ('Tb')
+                    zVector(i) = 65
+                case ('Dy')
+                    zVector(i) = 66
+                case ('Ho')
+                    zVector(i) = 67
+                case ('Er')
+                    zVector(i) = 68
+                case ('Tm')
+                    zVector(i) = 69
+                case ('Yb')
+                    zVector(i) = 70
+                case ('Lu')
+                    zVector(i) = 71
+                case ('Hf')
+                    zVector(i) = 72
+                case ('Ta')
+                    zVector(i) = 73
+                case ('W')
+                    zVector(i) = 74
+                case ('Re')
+                    zVector(i) = 75
+                case ('Os')
+                    zVector(i) = 76
+                case ('Ir')
+                    zVector(i) = 77
+                case ('Pt')
+                    zVector(i) = 78
+                case ('Au')
+                    zVector(i) = 79
+                case ('Hg')
+                    zVector(i) = 80
+                case ('Tl')
+                    zVector(i) = 81
+                case ('Pb')
+                    zVector(i) = 82
+                case ('Bi')
+                    zVector(i) = 83
+                case ('Po')
+                    zVector(i) = 84
+                case ('At')
+                    zVector(i) = 85
+                case ('Rn')
+                    zVector(i) = 86
+                case ('Fr')
+                    zVector(i) = 87
+                case ('Ra')
+                    zVector(i) = 88
+                case default
+                    call error("Unrecognized atom name")
+                end select
+            end do
+        
+        end subroutine getZvector
 
 end module
 

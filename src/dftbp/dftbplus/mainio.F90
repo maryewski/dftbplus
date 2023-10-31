@@ -3370,9 +3370,16 @@ contains
       write(fd, format2U) 'Energy ext. field', energy%Eext, 'H', energy%Eext * Hartree__eV, 'eV'
     end if
 
-    !> Electronic part of QM/MM energy
+    !> QM/MM energy terms
     if (allocated(openmmpolCalc)) then
-      write(fd, format2U) 'QM/MM coupling energy', energy%EqmmmElectrostatic, 'H', energy%EqmmmElectrostatic * Hartree__eV, 'eV'
+      write(fd, format2U) 'QM/MM electrostatic energy', energy%EqmmmElectrostatic,&
+                        & 'H', energy%EqmmmElectrostatic * Hartree__eV, 'eV'
+
+      write(fd, format2U) 'QM/MM bonded terms energy', energy%EqmmmBonded,&
+                        & 'H', energy%EqmmmBonded * Hartree__eV, 'eV'
+
+      write(fd, format2U) 'QM/MM non-bonded terms energy', energy%EqmmmNonBonded,&
+                        & 'H', energy%EqmmmNonBonded * Hartree__eV, 'eV'
     end if
 
     if (tSolv) then
@@ -3394,11 +3401,6 @@ contains
     if (tHalogenX) then
       write(fd, format2U) 'Halogen correction energy', energy%eHalogenX, 'H',&
           & energy%eHalogenX * Hartree__eV, 'eV'
-    end if
-
-    !> Pure molecular mechanical part of QM/MM energy
-    if (allocated(openmmpolCalc)) then
-      write(fd, format2U) 'Force field energy', energy%EqmmmBonded, 'H', energy%EqmmmBonded * Hartree__eV, 'eV'
     end if
 
     write(fd, format2U) 'Total energy', energy%Etotal, 'H', energy%Etotal * Hartree__eV, 'eV'

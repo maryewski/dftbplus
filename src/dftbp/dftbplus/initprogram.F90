@@ -1567,9 +1567,9 @@ contains
 
     call initReferencePopulation_(input, this%orb, this%hamiltonianType, this%referenceN0)
 
-    ! this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms) &
-                            ! .or. allocated(input%ctrl%openmmpolInput)
-    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms)
+    this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms) &
+                            .or. allocated(input%ctrl%openmmpolInput)
+    ! this%atomOrderMatters = this%atomOrderMatters .or. allocated(input%ctrl%customOccAtoms)
                             
     call initReferenceCharges(this%species0, this%orb, this%referenceN0, this%nSpin, this%q0,&
         & this%qShell0, input%ctrl%customOccAtoms, input%ctrl%customOccFillings)
@@ -1614,7 +1614,9 @@ contains
 
       ! If sanity checks pass, initialize
       allocate(this%openmmpolCalc)
-      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%species0, this%coord0)
+      ! call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, this%species0, this%coord0)
+      call TOMMPInterface_init(this%openmmpolCalc, input%ctrl%openmmpolInput, input%geom%speciesNames,&
+                              &this%species0, this%coord0)
     end if
 
   #:if WITH_TRANSPORT

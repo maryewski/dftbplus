@@ -1479,7 +1479,7 @@ contains
     call resetInternalPotentials(tDualSpinOrbit, xi, orb, speciesAll, potential)
 
     call getChargePerShell(qq, orb, speciesAll, chargePerShell)
-    call addChargePotentials(env, this%sccCalc, this%tblite, .true., .true., qq, q0, chargePerShell,&
+    call addChargePotentials(env, this%sccCalc, this%tblite, .true., qq, q0, chargePerShell,&
         & orb, this%multipole, speciesAll, neighbourList, img2CentCell, spinW, solvation,&
         & thirdOrd, dispersion, this%openmmpolCalc, potential)
 

@@ -708,7 +708,7 @@ contains
 
 
   !> Process the various potential contributions to give final potential to be added to the model
-  subroutine processPotentials(env, this, iSccIter, updateScc, isFirstCallInLoop, q, qBlock, qiBlock)
+  subroutine processPotentials(env, this, iSccIter, updateScc, q, qBlock, qiBlock)
 
     !> Environment settings
     type(TEnvironment), intent(inout) :: env
@@ -718,9 +718,6 @@ contains
 
     !> Current self-consistent iteration
     integer :: iSccIter
-
-    !> If processPotentials being called first time during current SCC iteration
-    logical, intent(in) :: isFirstCallInLoop
 
     !> Whether the charges in the scc calculator should be updated before obtaining the potential
     logical, intent(in) :: updateScc
@@ -758,7 +755,7 @@ contains
 
       call getChargePerShell(q, this%orb, this%species, this%chargePerShell)
 
-      call addChargePotentials(env, this%scc, this%tblite, updateScc, isFirstCallInLoop, q, this%q0,&
+      call addChargePotentials(env, this%scc, this%tblite, updateScc, q, this%q0,&
           & this%chargePerShell, this%orb, this%multipoleInp, this%species, this%neighbourList,&
           & this%img2CentCell, this%spinW, this%solvation, this%thirdOrd, this%dispersion,&
           & this%openmmpolCalc, this%potential)
@@ -1376,7 +1373,7 @@ contains
 
         lpConstrInner: do iConstrIter = 1, nConstrIter
 
-          call processPotentials(env, this, iSccIter, .true., .true., this%qInput, this%qBlockIn,&
+          call processPotentials(env, this, iSccIter, .true., this%qInput, this%qBlockIn,&
           & this%qiBlockIn)
 
           if (this%electronicSolver%iSolver == electronicSolverTypes%pexsi .and. this%tSccCalc) then
@@ -1424,7 +1421,7 @@ contains
           ! therefore it should not be overwritten here.
           if (.not. this%isXlbomd) then
             ! iteration is +1 as output potential in iteration 1 only available after solution of H
-            call processPotentials(env, this, iSccIter+1, this%updateSccAfterDiag, .false., this%qOutput,&
+            call processPotentials(env, this, iSccIter+1, this%updateSccAfterDiag, this%qOutput,&
             & this%qBlockOut, this%qiBlockOut)
           end if
 
@@ -7947,7 +7944,7 @@ contains
       call getChargePerShell(reks%qOutputL(:,:,:,iL), orb, species,&
           & reks%chargePerShellL(:,:,:,iL))
       call resetInternalPotentials(tDualSpinOrbit, xi, orb, species, potential)
-      call addChargePotentials(env, sccCalc, tblite, .true., .true., reks%qOutputL(:,:,:,iL), q0,&
+      call addChargePotentials(env, sccCalc, tblite, .true., reks%qOutputL(:,:,:,iL), q0,&
           & reks%chargePerShellL(:,:,:,iL), orb, multipole, species, neighbourList,&
           & img2CentCell, spinW, solvation, thirdOrd, dispersion, openmmpolCalc, potential)
 

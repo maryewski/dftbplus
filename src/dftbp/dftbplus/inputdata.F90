@@ -374,7 +374,7 @@ module dftbp_dftbplus_inputdata
     !> Number of k-points for the calculation
     integer :: nKPoint = 0
 
-    !> K-points for the system (= 0 for molecular in free space and no symmetries)
+    !> The k-points for the system (= 0 for molecular in free space and no symmetries)
     real(dp), allocatable :: kPoint(:,:)
 
     !> Weights for the k-points
@@ -390,6 +390,10 @@ module dftbp_dftbplus_inputdata
 
     !> Three diagonal elements of supercell folding coefficient matrix
     integer, allocatable :: supercellFoldingDiag(:)
+
+    !> Tolerance for helical symmetry determination of acceptable k-points commensurate with the
+    !! C_n symmetry
+    real(dp) :: helicalSymTol = 1.0E-8_dp
 
     !> Cell pressure if periodic
     real(dp) :: pressure = 0.0_dp

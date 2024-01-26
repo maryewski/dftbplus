@@ -53,6 +53,7 @@ helical/10-0Ctube                      #? MPI_PROCS <= 2
 helical/10-0CtubeC_10                  #? MPI_PROCS == 1
 helical/10-0CtubeC_10_origin           #? MPI_PROCS == 1
 helical/10-0CtubeC_10_sampled          #? MPI_PROCS == 1
+helical/1000-0-C_1000                  #? MPI_PROCS == 1
 helical/C6H6_stack                     #? MPI_PROCS == 1
 helical/10-0Ctube_ELPA                 #? WITH_ELSI and MPI_PROCS <= 8 and MPI_PROCS % 2 == 0 and OMP_THREADS == 1
 helical/C6H6_stack_ELPA                #? WITH_ELSI and MPI_PROCS == 1 and OMP_THREADS == 1
@@ -115,6 +116,7 @@ hybrid/cluster/Benzene-Spinpol-matrix              #? MPI_PROCS <= 1
 hybrid/cluster/Benzene-Casida-S5-Force             #? not WITH_MPI
 hybrid/cluster/C4H6-TD-LC-Triplet                  #? not WITH_MPI
 hybrid/cluster/Benzene-TD-LC-Spinpol               #? not WITH_MPI
+hybrid/cluster/Benzene-TD-LC-Spinpol-Force         #? not WITH_MPI
 hybrid/cluster/Benzene-TD-LC-Spinpol-Iter          #? not WITH_MPI
 
 hybrid/periodic/Acene-gamma-matrix-force-cam          #? MPI_PROCS <= 1
@@ -127,6 +129,8 @@ hybrid/periodic/Acene-kpts-band-mpi                   #? MPI_PROCS == 2
 hybrid/periodic/Acene-kpts-force-lc                   #? MPI_PROCS <= 1
 hybrid/periodic/Acene-kpts-restart                    #? MPI_PROCS <= 1
 hybrid/periodic/Acene-kpts-restart-mpi                #? MPI_PROCS == 2
+hybrid/periodic/Benzene-box-spin-neigh-ct-kpts        #? MPI_PROCS <= 1
+hybrid/periodic/Benzene-box-spin-neigh-ct-kpts-mpi    #? MPI_PROCS == 2
 hybrid/periodic/Benzene-gamma-matrix-spin-force-grp1  #? MPI_PROCS <= 9 and MPI_PROCS != 5 and MPI_PROCS != 7
 hybrid/periodic/Benzene-gamma-matrix-spin-force-grp2  #? MPI_PROCS == 2 or MPI_PROCS == 4
 hybrid/periodic/Benzene-gamma-neigh-spin-force        #? not WITH_MPI

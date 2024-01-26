@@ -171,21 +171,21 @@ contains
     !> Do we have the final geometry?
     logical :: tGeomEnd
 
-    !> do we take an optimization step on the lattice or the internal coordinates if optimizing both
+    !> Do we take an optimization step on the lattice or the internal coordinates if optimizing both
     !> in a periodic geometry
     logical :: tCoordStep
 
-    !> if scc/geometry driver should be stopped
+    !> If scc/geometry driver should be stopped
     logical :: tStopScc, tStopDriver
 
-    !> locality measure for the wavefunction
+    !> Locality measure for the wavefunction
     real(dp) :: localisation
 
-    !> flag to write out geometries (and charge data if scc) when moving atoms about - in the case
+    !> Flag to write out geometries (and charge data if scc) when moving atoms about - in the case
     !> of drivers like conjugate gradient/steepest descent the geometries are written anyway
     logical :: tWriteRestart
 
-    !> lattice vectors returned by the optimizer
+    !> Lattice vectors returned by the optimizer
     real(dp) :: constrLatDerivs(9)
 
     !> MD instantaneous thermal energy
@@ -620,22 +620,22 @@ contains
     !> Determinant derived type
     type(TDftbDeterminants), intent(in) :: deltaDftb
 
-    !> input charges
+    !> Input charges
     real(dp), intent(inout) :: qInput(:,:,:)
 
-    !> input charges from multiple determinants
+    !> Input charges from multiple determinants
     real(dp), intent(inout), allocatable :: qDets(:,:,:,:)
 
-    !> block charge input (if needed for orbital potentials)
+    !> Block charge input (if needed for orbital potentials)
     real(dp), intent(inout), allocatable :: qBlockIn(:,:,:,:)
 
-    !> block charge input (if needed for orbital potentials), from multiple determinants
+    !> Block charge input (if needed for orbital potentials), from multiple determinants
     real(dp), intent(inout), allocatable :: qBlockDets(:,:,:,:,:)
 
-    !> delta density matrix as input for next SCC cycle (if needed for range sep. potentials)
+    !> Delta density matrix as input for next SCC cycle (if needed for range sep. potentials)
     real(dp), intent(inout), allocatable :: deltaRhoIn(:,:,:)
 
-    !> delta density matrix (if needed for range sep. potentials), from multiple determinants
+    !> Delta density matrix (if needed for range sep. potentials), from multiple determinants
     real(dp), intent(inout), allocatable :: deltaRhoDets(:,:,:,:)
 
     isUnReduced = .false.
@@ -676,22 +676,22 @@ contains
     !> Total number of determinants
     integer, intent(in) :: nDets
 
-    !> output charges
+    !> Output charges
     real(dp), intent(inout) :: qOutput(:,:,:)
 
-    !> output charges from multiple determinants
+    !> Output charges from multiple determinants
     real(dp), intent(inout), allocatable :: qDets(:,:,:,:)
 
-    !> block charge output (if needed for orbital potentials), from multiple determinants
+    !> Block charge output (if needed for orbital potentials), from multiple determinants
     real(dp), intent(inout), allocatable :: qBlockDets(:,:,:,:,:)
 
-    !> block charge output (if needed for orbital potentials)
+    !> Block charge output (if needed for orbital potentials)
     real(dp), intent(inout), allocatable :: qBlockOut(:,:,:,:)
 
-    !> delta density matrix (if needed for range sep. potentials), from multiple determinants
+    !> Delta density matrix (if needed for range sep. potentials), from multiple determinants
     real(dp), intent(inout), allocatable :: deltaRhoDets(:,:,:,:)
 
-    !> delta density matrix as input for next SCC cycle (if needed for range sep. potentials)
+    !> Delta density matrix as input for next SCC cycle (if needed for range sep. potentials)
     real(dp), intent(inout), allocatable :: deltaRhoOut(:,:,:)
 
     if (nDets > 1) then
@@ -787,7 +787,7 @@ contains
   end subroutine processPotentials
 
 
-  !> Processes derived charges and populations from the Mulliken populations
+  !> Processes derived charges and populations from the Mulliken populations.
   subroutine processOutputCharges(env, this)
 
     !> Environment settings
@@ -796,8 +796,8 @@ contains
     !> Global variables
     type(TDftbPlusMain), intent(inout) :: this
 
-    ! Square dense overlap storage for calculating delta rho in Gamma-point case with
-    ! range-separated hybrid functionals
+    ! Square dense overlap storage for calculating delta rho in Gamma-point case with hybrid
+    ! xc-functionals
     real(dp), allocatable :: SSqrReal(:,:)
 
     ! CAM calculations need to deduct atomic charges from delta density matrix
@@ -1021,7 +1021,7 @@ contains
     !> Current self-consistent iteration
     integer, intent(in) :: iSccIter
 
-    !> difference in electronic energies between this and the previous iterations
+    !> Difference in electronic energies between this and the previous iterations
     real(dp), intent(in) :: diffElec
 
     !> Self-consistency error
@@ -1782,7 +1782,7 @@ contains
     !> Derivative of total energy with respect to lattice vectors
     real(dp), intent(in) :: totalLatDerivs(:,:)
 
-    !> derivative of cell volume wrt to lattice vectors, needed for pV term
+    !> Derivative of cell volume wrt to lattice vectors, needed for pV term
     real(dp), intent(in) :: extLatDerivs(:,:)
 
     !> Unit normals parallel to lattice vectors
@@ -1827,13 +1827,13 @@ contains
     !> Current geometry step
     integer, intent(in) :: iGeoStep
 
-    !> flag to write out geometries (and charge data if scc)
+    !> Flag to write out geometries (and charge data if scc)
     logical, intent(in) :: tWriteRestart
 
-    !> lattice vectors returned by the optimizer
+    !> Lattice vectors returned by the optimizer
     real(dp), intent(in) :: constrLatDerivs(:)
 
-    !> do we take an optimization step on the lattice or the internal coordinates if optimizing both
+    !> Do we take an optimization step on the lattice or the internal coordinates if optimizing both
     !> in a periodic geometry
     logical, intent(inout) :: tCoordStep
 
@@ -2073,7 +2073,7 @@ contains
       & repulsive, dispersion, solvation, cm5Cont, recVecs, recVecs2p, cellVol, recCellVol,&
       & extLatDerivs, cellVecs, rCellVecs, boundaryCond)
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(in) :: latVecs(:,:)
 
     !> Module variables
@@ -2082,7 +2082,7 @@ contains
     !> Library interface handler
     type(TTBLite), allocatable, intent(inout) :: tblite
 
-    !> evaluate stress
+    !> Evaluate stress
     logical, intent(in) :: tStress
 
     !> External pressure
@@ -2112,13 +2112,13 @@ contains
     !> Unit cell volume
     real(dp), intent(out) :: cellVol
 
-    !> reciprocal lattice unit cell volume
+    !> Reciprocal lattice unit cell volume
     real(dp), intent(out) :: recCellVol
 
-    !> derivative of pV term
+    !> Derivative of pV term
     real(dp), intent(out) :: extLatDerivs(:,:)
 
-    !> translation vectors to lattice cells in units of lattice constants
+    !> Translation vectors to lattice cells in units of lattice constants
     real(dp), allocatable, intent(out) :: cellVecs(:,:)
 
     !> Vectors to unit cells in absolute units
@@ -2188,7 +2188,7 @@ contains
     !> Inverse of the lattice vectors
     real(dp), intent(in) :: invLatVec(:,:)
 
-    !> chemical species of central cell atoms
+    !> Chemical species of central cell atoms
     integer, intent(in) :: species0(:)
 
     !> Longest cut-off distances that neighbour maps are generated for
@@ -2227,7 +2227,7 @@ contains
     !> Range separation contributions
     class(THybridXcFunc), allocatable, intent(inout) :: hybridXc
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), allocatable, intent(inout) :: reks
 
     !> Image atoms to their equivalent in the central cell
@@ -2284,10 +2284,10 @@ contains
     !> Imaginary part of sparse density matrix storage
     real(dp), allocatable, intent(inout) :: iRhoPrim(:,:)
 
-    !> energy weighted density matrix storage
+    !> Energy weighted density matrix storage
     real(dp), allocatable, intent(inout) :: ERhoPrim(:)
 
-    !> index array for location of atomic blocks in large sparse arrays
+    !> Index array for location of atomic blocks in large sparse arrays
     integer, allocatable, intent(inout) :: iSparseStart(:,:)
 
     !> Charge model 5
@@ -2465,7 +2465,7 @@ contains
     !> Size of the sparse overlap
     integer, intent(in) :: sparseSize
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), allocatable, intent(inout) :: reks
 
     !> Integral container
@@ -2592,7 +2592,7 @@ contains
     !> Is this a transport calculation?
     logical, intent(in) :: tNegf
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), allocatable, intent(inout) :: reks
 
     if (allocated(xlbomdIntegrator)) then
@@ -2674,10 +2674,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
-    !> list of neighbours for each atom (symmetric version)
+    !> List of neighbours for each atom (symmetric version)
     type(TSymNeighbourList), intent(in), allocatable :: symNeighbourList
 
     !> Number of neighbours for each of the atoms
@@ -2686,7 +2686,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -2695,7 +2695,7 @@ contains
     !> Vectors (in units of the lattice constants) to cells of the lattice
     real(dp), intent(in) :: cellVec(:,:)
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
@@ -2710,7 +2710,7 @@ contains
     !> Coordinates of all atoms including images
     real(dp), allocatable, intent(inout) :: coord(:,:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
     !> Electronic solver information
@@ -2749,7 +2749,7 @@ contains
     !> Should Mulliken populations be generated/output
     logical, intent(in) :: tMulliken
 
-    !> occupation function for electronic states
+    !> Occupation function for electronic states
     integer, intent(in) :: iDistribFn
 
     !> Electronic temperature
@@ -2758,7 +2758,7 @@ contains
     !> Number of electrons
     real(dp), intent(in) :: nEl(:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Fermi level(s)
@@ -2773,40 +2773,40 @@ contains
     !> Data for hybrid xc-functional calculation
     class(THybridXcFunc), allocatable, intent(inout) :: hybridXc
 
-    !> eigenvalues (level, kpoint, spin)
+    !> Eigenvalues (level, kpoint, spin)
     real(dp), intent(out) :: eigen(:,:,:)
 
-    !> occupations (level, kpoint, spin)
+    !> Occupations (level, kpoint, spin)
     real(dp), intent(out) :: filling(:,:,:)
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(out) :: rhoPrim(:,:)
 
-    !> spin orbit constants
+    !> Spin orbit constants
     real(dp), intent(in), allocatable :: xi(:,:)
 
-    !> orbital moments of atomic shells
+    !> Orbital moments of atomic shells
     real(dp), intent(inout), allocatable :: orbitalL(:,:,:)
 
-    !> imaginary part of density matrix
+    !> Imaginary part of density matrix
     real(dp), intent(inout), allocatable :: iRhoPrim(:,:)
 
-    !> dense real hamiltonian storage
+    !> Dense real hamiltonian storage
     real(dp), intent(inout), allocatable :: HSqrReal(:,:)
 
-    !> dense real overlap storage
+    !> Dense real overlap storage
     real(dp), intent(inout), allocatable :: SSqrReal(:,:)
 
-    !> real eigenvectors on exit
+    !> Real eigenvectors on exit
     real(dp), intent(inout), allocatable :: eigvecsReal(:,:,:)
 
-    !> dense complex (k-points) hamiltonian storage
+    !> Dense complex (k-points) hamiltonian storage
     complex(dp), intent(inout), allocatable :: HSqrCplx(:,:)
 
-    !> dense complex (k-points) overlap storage
+    !> Dense complex (k-points) overlap storage
     complex(dp), intent(inout), allocatable :: SSqrCplx(:,:)
 
-    !> complex eigenvectors on exit
+    !> Complex eigenvectors on exit
     complex(dp), intent(inout), allocatable :: eigvecsCplx(:,:,:)
 
     !> Dense density matrix
@@ -2897,10 +2897,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
-    !> list of neighbours for each atom (symmetric version)
+    !> List of neighbours for each atom (symmetric version)
     type(TSymNeighbourList), intent(in), allocatable :: symNeighbourList
 
     !> Number of neighbours for each of the atoms
@@ -2909,7 +2909,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -2918,7 +2918,7 @@ contains
     !> Vectors (in units of the lattice constants) to cells of the lattice
     real(dp), intent(in) :: cellVec(:,:)
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
@@ -2933,7 +2933,7 @@ contains
     !> Coordinates of all atoms including images
     real(dp), allocatable, intent(inout) :: coord(:,:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
     !> Electronic solver information
@@ -2972,7 +2972,7 @@ contains
     !> Should Mulliken populations be generated/output
     logical, intent(in) :: tMulliken
 
-    !> occupation function for electronic states
+    !> Occupation function for electronic states
     integer, intent(in) :: iDistribFn
 
     !> Electronic temperature
@@ -2981,7 +2981,7 @@ contains
     !> Number of electrons
     real(dp), intent(in) :: nEl(:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Fermi level(s)
@@ -2993,40 +2993,40 @@ contains
     !> Data for hybrid xc-functional calculation
     class(THybridXcFunc), intent(inout), allocatable :: hybridXc
 
-    !> eigenvalues (level, kpoint, spin)
+    !> Eigenvalues (level, kpoint, spin)
     real(dp), intent(out) :: eigen(:,:,:)
 
-    !> occupations (level, kpoint, spin)
+    !> Occupations (level, kpoint, spin)
     real(dp), intent(out) :: filling(:,:,:)
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(out) :: rhoPrim(:,:)
 
-    !> spin orbit constants
+    !> Spin orbit constants
     real(dp), intent(in), allocatable :: xi(:,:)
 
-    !> orbital moments of atomic shells
+    !> Orbital moments of atomic shells
     real(dp), intent(inout), allocatable :: orbitalL(:,:,:)
 
-    !> imaginary part of density matrix
+    !> Imaginary part of density matrix
     real(dp), intent(inout), allocatable :: iRhoPrim(:,:)
 
-    !> dense real hamiltonian storage
+    !> Dense real hamiltonian storage
     real(dp), intent(inout), allocatable :: HSqrReal(:,:)
 
-    !> dense real overlap storage
+    !> Dense real overlap storage
     real(dp), intent(inout), allocatable :: SSqrReal(:,:)
 
-    !> real eigenvectors on exit
+    !> Real eigenvectors on exit
     real(dp), intent(inout), allocatable :: eigvecsReal(:,:,:)
 
-    !> dense complex (k-points) hamiltonian storage
+    !> Dense complex (k-points) hamiltonian storage
     complex(dp), intent(inout), allocatable :: HSqrCplx(:,:)
 
-    !> dense complex (k-points) overlap storage
+    !> Dense complex (k-points) overlap storage
     complex(dp), intent(inout), allocatable :: SSqrCplx(:,:)
 
-    !> complex eigenvectors on exit
+    !> Complex eigenvectors on exit
     complex(dp), intent(inout), allocatable :: eigvecsCplx(:,:,:)
 
     !> Dense density matrix
@@ -3121,10 +3121,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
-    !> list of neighbours for each atom (symmetric version)
+    !> List of neighbours for each atom (symmetric version)
     type(TSymNeighbourList), intent(in), allocatable :: symNeighbourList
 
     !> Number of neighbours for each of the atoms
@@ -3133,13 +3133,13 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
     !> Is the system periodic?
@@ -3154,7 +3154,7 @@ contains
     !> Electronic solver information
     type(TElectronicSolver), intent(inout) :: electronicSolver
 
-    !> K-points and spins to be handled
+    !> The k-points and spins to be handled
     type(TParallelKS), intent(in) :: parallelKS
 
     !>Data for hybrid xc-functional calculation
@@ -3169,16 +3169,16 @@ contains
     !> Symmetric neighbour list version of nNeighbourCam
     integer, intent(in), allocatable :: nNeighbourCamSym(:)
 
-    !> dense hamiltonian matrix
+    !> Dense hamiltonian matrix
     real(dp), intent(out) :: HSqrReal(:,:)
 
-    !> dense overlap matrix
+    !> Dense overlap matrix
     real(dp), intent(out) :: SSqrReal(:,:)
 
     !> Eigenvectors on eixt
     real(dp), intent(out) :: eigvecsReal(:,:,:)
 
-    !> eigenvalues
+    !> Eigenvalues
     real(dp), intent(out) :: eigen(:,:)
 
     !> Status of operation
@@ -3271,10 +3271,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
-    !> K-point weight (for energy contribution)
+    !> The k-point weight (for energy contribution)
     real(dp), intent(in) :: kWeight(:)
 
     !> List of neighbours for each atom
@@ -3289,7 +3289,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Vectors to unit cells in absolute units
@@ -3307,7 +3307,7 @@ contains
     !> Electronic solver information
     type(TElectronicSolver), intent(inout) :: electronicSolver
 
-    !> K-points and spins to be handled
+    !> The k-points and spins to be handled
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
@@ -3355,7 +3355,6 @@ contains
     eigen(:,:,:) = 0.0_dp
 
     if (allocated(hybridXc)) then
-      ! Pre-calculate CAM-Hamiltonian and overlap
       ! Get CAM-Hamiltonian contribution for all spins/k-points
       call hybridXc%getCamHamiltonian_kpts(env, densityMatrix%deltaRhoInCplxHS,&
           & symNeighbourList, nNeighbourCamSym, rCellVecs, cellVec, denseDesc%iAtomStart, orb,&
@@ -3365,7 +3364,9 @@ contains
 
     ! Loop over all spins/k-points associated with MPI group
     do iKS = 1, parallelKS%nLocalKS
+      ! Get global k-point index from local iKS composite
       iK = parallelKS%localKS(1, iKS)
+      ! Get global spin index from local iKS composite
       iSpin = parallelKS%localKS(2, iKS)
     #:if WITH_SCALAPACK
       call env%globalTimer%startTimer(globalTimers%sparseToDense)
@@ -3389,10 +3390,9 @@ contains
       end if
       call env%globalTimer%stopTimer(globalTimers%sparseToDense)
 
-      ! Add CAM contribution to local Hamiltonian
+      ! Add pre-calculated CAM contribution to local, non-distributed Hamiltonian
       ! (Works only if total number of MPI processes matches number of MPI groups.)
       if (allocated(hybridXc)) then
-        ! Index iK at this point is only working for spin-restricted calculations
         HSqrCplx(:,:) = HSqrCplx + HSqrCplxCam(:,:, densityMatrix%iKiSToiGlobalKS(iK, iSpin))
       end if
 
@@ -3416,10 +3416,9 @@ contains
       end if
       call env%globalTimer%stopTimer(globalTimers%sparseToDense)
 
-      ! Add CAM contribution to local Hamiltonian
+      ! Add pre-calculated CAM contribution to local, non-distributed Hamiltonian
       ! (Works only if total number of MPI processes matches number of MPI groups.)
       if (allocated(hybridXc)) then
-        ! Index iK at this point is only working for spin-restricted calculations
         HSqrCplx(:,:) = HSqrCplx + HSqrCplxCam(:,:, densityMatrix%iKiSToiGlobalKS(iK, iSpin))
       end if
 
@@ -3452,10 +3451,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -3464,7 +3463,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -3473,34 +3472,34 @@ contains
     !> Vectors (in units of the lattice constants) to cells of the lattice
     real(dp), intent(in) :: cellVec(:,:)
 
-    !> atomic orbital information
+    !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
     !> Electronic solver information
     type(TElectronicSolver), intent(inout) :: electronicSolver
 
-    !> K-points and spins to be handled
+    !> The k-points and spins to be handled
     type(TParallelKS), intent(in) :: parallelKS
 
-    !> eigenvalues (orbital, kpoint)
+    !> Eigenvalues (orbital, kpoint)
     real(dp), intent(out) :: eigen(:,:)
 
-    !> dense hamiltonian matrix
+    !> Dense hamiltonian matrix
     complex(dp), intent(out) :: HSqrCplx(:,:)
 
-    !> dense overlap matrix
+    !> Dense overlap matrix
     complex(dp), intent(out) :: SSqrCplx(:,:)
 
-    !> eigenvectors
+    !> Eigenvectors
     complex(dp), intent(out) :: eigvecsCplx(:,:,:)
 
     !> Status of operation
     type(TStatus), intent(out) :: errStatus
 
-    !> spin orbit constants
+    !> Spin orbit constants
     real(dp), intent(in), allocatable :: xi(:,:)
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
     integer :: iKS, iK
@@ -3572,7 +3571,7 @@ contains
     !> Filling
     real(dp), intent(in) :: filling(:,:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -3581,19 +3580,19 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
     !> Is the system periodic (gamma)?
@@ -3602,13 +3601,13 @@ contains
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> eigenvectors
+    !> Eigenvectors
     real(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(out) :: rhoPrim(:,:)
 
-    !> work space array
+    !> Work space array
     real(dp), intent(out) :: work(:,:)
 
     !> Dense density matrix if needed
@@ -3656,7 +3655,6 @@ contains
         call env%globalTimer%stopTimer(globalTimers%denseToSparse)
       end if
     #:else
-      ! Either pack density matrix or delta density matrix
       if (.not. allocated(deltaRhoOut)) then
         call makeDensityMatrix(work, eigvecs(:,:,iKS), filling(:,iSpin))
         call env%globalTimer%startTimer(globalTimers%denseToSparse)
@@ -3669,7 +3667,8 @@ contains
         end if
         call env%globalTimer%stopTimer(globalTimers%denseToSparse)
       else
-        ! Range-separated case: pack delta density matrix
+        ! Hybrid xc-functional: store density matrix in deltaRhoOut
+        ! (at this point, deltaRhoOut still contains the full density, not yet delta-density)
         call makeDensityMatrix(deltaRhoOut(:,:,iSpin), eigvecs(:,:,iKS), filling(:,iSpin))
         call env%globalTimer%startTimer(globalTimers%denseToSparse)
         if (tHelical) then
@@ -3684,9 +3683,17 @@ contains
       end if
     #:endif
 
+      ! Store full density matrix for linear-response excited gradient evaluation
+      ! (at this point equivalent to deltaRhoOut, but deltaRhoOut is later transformed into
+      ! delta-density, therefore we store it separately for now)
       if (allocated(rhoSqrReal)) then
-        rhoSqrReal(:,:,iSpin) = work
+        if (.not. allocated(deltaRhoOut)) then
+          rhoSqrReal(:,:, iSpin) = work
+        else
+          rhoSqrReal(:,:, iSpin) = deltaRhoOut(:,:,iSpin)
+        end if
       end if
+
     end do
 
   #:if WITH_SCALAPACK
@@ -3720,13 +3727,13 @@ contains
     !> Occupations of single particle states in the ground state
     real(dp), intent(in) :: filling(:,:,:)
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -3735,7 +3742,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -3747,25 +3754,25 @@ contains
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> species for atoms
+    !> Species for atoms
     integer, intent(in) :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
-    !> eigenvectors of the system
+    !> Eigenvectors of the system
     complex(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> density matrix in sparse storage
+    !> Density matrix in sparse storage
     real(dp), intent(out) :: rhoPrim(:,:)
 
-    !> workspace array
+    !> Workspace array
     complex(dp), intent(out) :: work(:,:)
 
     !> Holds real and complex delta density matrices and pointers
@@ -3854,16 +3861,16 @@ contains
     !> Should Mulliken populations be generated/output
     logical, intent(in) :: tMulliken
 
-    !> k-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> occupations of molecular orbitals/Bloch states
+    !> Occupations of molecular orbitals/Bloch states
     real(dp), intent(in) :: filling(:,:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -3875,7 +3882,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -3884,31 +3891,31 @@ contains
     !> Vectors (in units of the lattice constants) to cells of the lattice
     real(dp), intent(in) :: cellVec(:,:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
-    !> eigenvectors
+    !> Eigenvectors
     complex(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> work space array
+    !> Work space array
     complex(dp), intent(inout) :: work(:,:)
 
     !> Energy contributions and total
     type(TEnergies), intent(inout) :: dftbEnergy
 
-    !> sparse stored density matrix
+    !> Sparse stored density matrix
     real(dp), intent(out) :: rhoPrim(:,:)
 
-    !> spin orbit constants
+    !> Spin orbit constants
     real(dp), intent(in), allocatable :: xi(:,:)
 
     !> Angular momentum of atomic shells
     real(dp), intent(inout), allocatable :: orbitalL(:,:,:)
 
-    !> imaginary part of density matrix  if required
+    !> Imaginary part of density matrix  if required
     real(dp), intent(inout), allocatable :: iRhoPrim(:,:)
 
 
@@ -4124,7 +4131,7 @@ contains
     !> Environment settings
     type(TEnvironment), intent(in) :: env
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(in) :: rhoPrim(:,:)
 
     !> Integral container
@@ -4139,16 +4146,16 @@ contains
     !> Number of neighbours for each atom within overlap distance
     integer, intent(in) :: nNeighbourSK(:)
 
-    !> image to actual atom indexing
+    !> Image to actual atom indexing
     integer, intent(in) :: img2CentCell(:)
 
-    !> sparse matrix indexing array
+    !> Sparse matrix indexing array
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> orbital charges
+    !> Orbital charges
     real(dp), intent(out) :: qOrb(:,:,:)
 
-    !> imaginary part of density matrix
+    !> Imaginary part of density matrix
     real(dp), intent(in), allocatable :: iRhoPrim(:,:)
 
     !> Dual atomic charges
@@ -4213,7 +4220,7 @@ contains
   !> Checks for the presence of a stop file on disc.
   function hasStopFile(fileName) result(tStop)
 
-    !> name of file to check for
+    !> Name of file to check for
     character(*), intent(in) :: fileName
 
     !> Is the file present
@@ -4261,10 +4268,10 @@ contains
     !> Number of current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC iterations to perform
+    !> Minimum number of SCC iterations to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC iterations before terminating loop
+    !> Maximum number of SCC iterations before terminating loop
     integer, intent(in) :: maxSccIter
 
     !> Tolerance on SCC charges between input and output
@@ -4273,7 +4280,7 @@ contains
     !> Should the SCC loop stop
     logical, intent(in) :: tStopScc
 
-    !> are orbital potentials being used
+    !> Are orbital potentials being used
     logical, intent(in) :: tMixBlockCharges
 
     !> Were initial charges read from disc?
@@ -4297,10 +4304,10 @@ contains
     !> Dual output charges
     real(dp), intent(inout), allocatable :: qBlockOut(:,:,:,:)
 
-    !> equivalence mapping for dual charge blocks
+    !> Equivalence mapping for dual charge blocks
     integer, intent(in), allocatable :: iEqBlockDftbu(:,:,:,:)
 
-    !> block charge input (if needed for orbital potentials)
+    !> Block charge input (if needed for orbital potentials)
     real(dp), intent(inout), allocatable :: qBlockIn(:,:,:,:)
 
     !> Imaginary part of block charges
@@ -4309,7 +4316,7 @@ contains
     !> Equivalence mappings in the case of spin orbit and DFTB+U
     integer, intent(in), allocatable :: iEqBlockDftbuLS(:,:,:,:)
 
-    !> atomic species for atoms
+    !> Atomic species for atoms
     integer, intent(in), allocatable :: species0(:)
 
     !> Imaginary part of block atomic input populations
@@ -4406,7 +4413,7 @@ contains
     !> Environment settings
     type(TEnvironment), intent(in) :: env
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Square dense overlap storage
@@ -4415,7 +4422,7 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -4427,7 +4434,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Charge mixing object
@@ -4448,7 +4455,7 @@ contains
     !> Species for atoms
     integer, intent(in) :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
     !> Number of current geometry step
@@ -4457,10 +4464,10 @@ contains
     !> Number of current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC iterations to perform
+    !> Minimum number of SCC iterations to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC iterations before terminating loop
+    !> Maximum number of SCC iterations before terminating loop
     integer, intent(in) :: maxSccIter
 
     !> Tolerance on SCC charges between input and output
@@ -4627,7 +4634,7 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -4639,7 +4646,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Charge mixing object
@@ -4657,10 +4664,10 @@ contains
     !> Number of current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC iterations to perform
+    !> Minimum number of SCC iterations to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC iterations before terminating loop
+    !> Maximum number of SCC iterations before terminating loop
     integer, intent(in) :: maxSccIter
 
     !> Tolerance on SCC charges between input and output
@@ -4672,7 +4679,7 @@ contains
     !> Were initial charges read from disc?
     logical, intent(in) :: tReadChrg
 
-    !> reference charges
+    !> Reference charges
     real(dp), intent(in) :: q0(:,:,:)
 
     !> Index of the cell translation vector for each atom.
@@ -4758,7 +4765,7 @@ contains
     !> Number of unique types of atomic orbitals
     integer, intent(in) :: nIneqOrb
 
-    !> equivalence index
+    !> Equivalence index
     integer, intent(in) :: iEqOrbitals(:,:,:)
 
     !> Electrons in atomic orbitals
@@ -4770,7 +4777,7 @@ contains
     !> Block (dual) populations, if also being reduced
     real(dp), intent(in), allocatable :: qBlock(:,:,:,:)
 
-    !> equivalences for block charges
+    !> Equivalences for block charges
     integer, intent(in), allocatable :: iEqBlockDftbu(:,:,:,:)
 
     !> Imaginary part of block charges if present
@@ -4825,7 +4832,7 @@ contains
     !> Number of unique types of atomic orbitals
     integer, intent(in) :: nIneqOrb
 
-    !> equivalence index
+    !> Equivalence index
     integer, intent(in) :: iEqOrbitals(:,:,:)
 
     !> Electrons in atomic orbitals
@@ -4837,10 +4844,10 @@ contains
     !> Block (dual) populations, if also stored in reduced form
     real(dp), intent(inout), allocatable :: qBlock(:,:,:,:)
 
-    !> equivalences for block charges
+    !> Equivalences for block charges
     integer, intent(in), allocatable :: iEqBlockDftbU(:,:,:,:)
 
-    !> species of central cell atoms
+    !> Species of central cell atoms
     integer, intent(in), allocatable :: species0(:)
 
     !> Imaginary part of block atomic populations
@@ -4899,10 +4906,10 @@ contains
     !> Electronic energy
     real(dp), intent(in) :: Eelec
 
-    !> old electronic energy, overwritten on exit with current value
+    !> Old electronic energy, overwritten on exit with current value
     real(dp), intent(inout) :: EelecOld
 
-    !> difference in electronic energies between iterations
+    !> Difference in electronic energies between iterations
     real(dp), intent(out) :: diffElec
 
     if (iSccIter > 1) then
@@ -4919,40 +4926,40 @@ contains
   function needsSccRestartWriting(restartFreq, iGeoStep, iSccIter, minSccIter, maxSccIter, tMd,&
       & isGeoOpt, tDerivs, tConverged, tReadChrg, tStopScc) result(tRestart)
 
-    !> frequency of charge  write out
+    !> Frequency of charge  write out
     integer, intent(in) :: restartFreq
 
-    !> current geometry step
+    !> Current geometry step
     integer, intent(in) :: iGeoStep
 
-    !> current SCC step
+    !> Current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC cycles to perform
+    !> Minimum number of SCC cycles to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC cycles to perform
+    !> Maximum number of SCC cycles to perform
     integer, intent(in) :: maxSccIter
 
-    !> is this molecular dynamics
+    !> Is this molecular dynamics
     logical, intent(in) :: tMd
 
     !> Is there geometry optimisation
     logical, intent(in) :: isGeoOpt
 
-    !> are finite difference changes happening
+    !> Are finite difference changes happening
     logical, intent(in) :: tDerivs
 
     !> Is this converged SCC
     logical, intent(in) :: tConverged
 
-    !> have the charges been read from disc
+    !> Have the charges been read from disc
     logical, intent(in) :: tReadChrg
 
     !> Has the SCC cycle been stopped?
     logical, intent(in) :: tStopScc
 
-    !> resulting decision as to whether to write charges to disc
+    !> Resulting decision as to whether to write charges to disc
     logical :: tRestart
 
     logical :: tEnoughIters, tRestartIter
@@ -4984,49 +4991,49 @@ contains
     !> Environment settings
     type(TEnvironment), intent(in) :: env
 
-    !> excited state settings
+    !> Excited state settings
     type(TLinResp), intent(inout), allocatable :: linearResponse
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> SCC module internal variables
     type(TScc), intent(in) :: sccCalc
 
-    !> electrons in atomic orbitals
+    !> Electrons in atomic orbitals
     real(dp), intent(in) :: qOutput(:,:,:)
 
-    !> reference atomic orbital occupations
+    !> Reference atomic orbital occupations
     real(dp), intent(in) :: q0(:,:,:)
 
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> ground state eigenvectors
+    !> Ground state eigenvectors
     real(dp), intent(in) :: eigvecsReal(:,:,:)
 
-    !> ground state eigenvalues (orbital, kpoint)
+    !> Ground state eigenvalues (orbital, kpoint)
     real(dp), intent(in) :: eigen(:,:)
 
-    !> ground state fillings (orbital, kpoint)
+    !> Ground state fillings (orbital, kpoint)
     real(dp), intent(in) :: filling(:,:)
 
-    !> all atomic coordinates
+    !> All atomic coordinates
     real(dp), intent(in) :: coord(:,:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, target, intent(in) :: species(:)
 
-    !> label for each atomic chemical species
+    !> Label for each atomic chemical species
     character(*), intent(in) :: speciesName(:)
 
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> non-SCC hamiltonian information
+    !> Non-SCC hamiltonian information
     type(TSlakoCont), intent(in) :: skHamCont
 
-    !> overlap information
+    !> Overlap information
     type(TSlakoCont), intent(in) :: skOverCont
 
     !> File name for regression data
@@ -5038,7 +5045,7 @@ contains
     !> Job ID for future identification
     integer, intent(in) :: runId
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -5050,49 +5057,49 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
-    !> should regression test data be written
+    !> Should regression test data be written
     logical, intent(in) :: tWriteAutotest
 
-    !> forces to be calculated in the excited state
+    !> Forces to be calculated in the excited state
     logical, intent(in) :: tForces
 
-    !> require the Z vector for excited state properties
+    !> Require the Z vector for excited state properties
     logical, intent(in) :: tLinRespZVect
 
-    !> print natural orbitals of the excited state
+    !> Print natural orbitals of the excited state
     logical, intent(in) :: tPrintExcEigvecs
 
-    !> print natural orbitals also in text form?
+    !> Print natural orbitals also in text form?
     logical, intent(in) :: tPrintExcEigvecsTxt
 
-    !> method for calculating derivatives of S and H0
+    !> Method for calculating derivatives of S and H0
     type(TNonSccDiff), intent(in) :: nonSccDeriv
 
     !> Energy contributions and total
     type(TEnergies), intent(inout) :: dftbEnergy
 
-    !> energies of all solved states
+    !> Energies of all solved states
     real(dp), intent(inout), allocatable :: energies(:)
 
     !> Working array of the size of the dense matrices.
     real(dp), intent(out) :: work(:,:)
 
-    !> density matrix in dense form
+    !> Density matrix in dense form
     real(dp), intent(inout), allocatable :: rhoSqrReal(:,:,:)
 
-    !> difference density matrix (vs. uncharged atoms) in dense form
+    !> Difference density matrix (vs. uncharged atoms) in dense form
     real(dp), intent(inout), allocatable :: deltaRhoOut(:,:,:)
 
-    !> excited state energy derivatives per state with respect to atomic coordinates
+    !> Excited state energy derivatives per state with respect to atomic coordinates
     real(dp), intent(inout), allocatable :: excitedDerivs(:,:,:)
 
     !> Non-adiabatic coupling vectors
     real(dp), intent(inout), allocatable :: naCouplings(:,:,:)
 
-    !> natural orbital occupation numbers
+    !> Natural orbital occupation numbers
     real(dp), intent(inout), allocatable :: occNatural(:)
 
     !> Data for range-separated calculation
@@ -5160,10 +5167,10 @@ contains
       & qInput, qInpRed, dftbU, iEqBlockDftbu, qBlockIn, species0, iEqBlockDftbuLS, qiBlockIn,&
       & iEqBlockOnSite, iEqBlockOnSiteLS)
 
-    !> integrator for the extended Lagrangian
+    !> Integrator for the extended Lagrangian
     type(TXLBOMD), intent(inout) :: xlbomdIntegrator
 
-    !> output charges, reduced by equivalences
+    !> Output charges, reduced by equivalences
     real(dp), intent(in) :: qOutRed(:)
 
     !> SCC mixer
@@ -5172,16 +5179,16 @@ contains
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> number of inequivalent orbitals
+    !> Number of inequivalent orbitals
     integer, intent(in) :: nIneqOrb
 
-    !> equivalence map
+    !> Equivalence map
     integer, intent(in) :: iEqOrbitals(:,:,:)
 
-    !> input charges
+    !> Input charges
     real(dp), intent(out) :: qInput(:,:,:)
 
-    !> input charges reduced by equivalences
+    !> Input charges reduced by equivalences
     real(dp), intent(out) :: qInpRed(:)
 
     !> Are there orbital potentials present
@@ -5190,16 +5197,16 @@ contains
     !> +U equivalences
     integer, intent(in), allocatable :: iEqBlockDftbU(:,:,:,:)
 
-    !> central cell species
+    !> Central cell species
     integer, intent(in), allocatable :: species0(:)
 
-    !> block input charges
+    !> Block input charges
     real(dp), intent(inout), allocatable :: qBlockIn(:,:,:,:)
 
-    !> equivalences for spin orbit
+    !> Equivalences for spin orbit
     integer, intent(in), allocatable :: iEqBlockDftbuLS(:,:,:,:)
 
-    !> imaginary part of dual charges
+    !> Imaginary part of dual charges
     real(dp), intent(inout), allocatable :: qiBlockIn(:,:,:,:)
 
     !> Equivalences for onsite block corrections if needed
@@ -5227,22 +5234,22 @@ contains
   !> Calculates dipole moment.
   subroutine getDipoleMoment(qOutput, q0, dipAtom, coord, dipoleMoment, iAtInCentralRegion)
 
-    !> electrons in orbitals
+    !> Electrons in orbitals
     real(dp), intent(in) :: qOutput(:,:,:)
 
-    !> reference atomic charges
+    !> Reference atomic charges
     real(dp), intent(in) :: q0(:,:,:)
 
     !> Dipole populations for each atom
     real(dp), intent(in), optional :: dipAtom(:,:,:)
 
-    !> atomic coordinates
+    !> Atomic coordinates
     real(dp), intent(in) :: coord(:,:)
 
-    !> resulting dipole moment
+    !> Resulting dipole moment
     real(dp), intent(out) :: dipoleMoment(:)
 
-    !> atoms in the central cell (or device region if transport)
+    !> Atoms in the central cell (or device region if transport)
     integer, intent(in) :: iAtInCentralRegion(:)
 
     integer :: nAtom, ii, iAtom
@@ -5288,19 +5295,19 @@ contains
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
     integer, intent(in) :: nNeighbourSK(:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Instance of electric/dipole scaling due to any dielectric media effects
@@ -5397,13 +5404,13 @@ contains
     !> Eigenvalues
     real(dp), intent(in) :: eigen(:,:,:)
 
-    !> K-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -5415,7 +5422,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -5430,19 +5437,19 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
-    !> iteration counter
+    !> Iteration counter
     integer, intent(in) :: iSCC
 
     !> Electrochemical potentials per contact and spin
@@ -5544,13 +5551,13 @@ contains
     !> Eigenvalues
     real(dp), intent(in) :: eigen(:,:,:)
 
-    !> K-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -5562,7 +5569,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -5577,16 +5584,16 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
     !> Energy weighted sparse matrix
@@ -5653,7 +5660,7 @@ contains
     !> Eigenvalues
     real(dp), intent(in) :: eigen(:,:,:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -5665,22 +5672,22 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
     !> Eigenvectors (NOTE: they will be rewritten with work data on exit!)
@@ -5851,16 +5858,16 @@ contains
     !> Occupations of single particle states in the ground state
     real(dp), intent(in) :: filling(:,:,:)
 
-    !> eigen-values of the system
+    !> Eigen-values of the system
     real(dp), intent(in) :: eigen(:,:,:)
 
-    !> k-points of the system
+    !> The k-points of the system
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -5872,7 +5879,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -5884,22 +5891,22 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> species of atoms
+    !> Species of atoms
     integer, intent(in), optional :: species(:)
 
-    !> all coordinates
+    !> All coordinates
     real(dp), intent(in) :: coord(:,:)
 
     !> Eigenvectors of the system
     complex(dp), intent(inout) :: eigvecsCplx(:,:,:)
 
-    !> work array (sized like overlap matrix)
+    !> Work array (sized like overlap matrix)
     complex(dp), intent(inout) :: work(:,:)
 
     !> Energy weighted sparse density matrix (charge only part)
@@ -6077,13 +6084,13 @@ contains
     !> Eigenvalues
     real(dp), intent(in) :: eigen(:,:,:)
 
-    !> K-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
     real(dp), intent(in) :: kWeight(:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -6095,7 +6102,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -6107,7 +6114,7 @@ contains
     !> Is the hamiltonian real (no k-points/molecule/gamma point)?
     logical, intent(in) :: tRealHS
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Eigenvectors
@@ -6173,7 +6180,7 @@ contains
     !> Environment settings
     type(TEnvironment), intent(inout) :: env
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Boundary conditions on the geometry
@@ -6278,16 +6285,16 @@ contains
     !> Population dependant external potential
     type(TQDepExtPotProxy), intent(inout), allocatable :: qDepExtPot
 
-    !> forces on external charges
+    !> Forces on external charges
     real(dp), intent(inout), allocatable :: chrgForces(:,:)
 
-    !> dispersion interactions
+    !> Dispersion interactions
     class(TDispersionIface), intent(inout), allocatable :: dispersion
 
     !> Data from hybrid xc-functional calculations
     class(THybridXcFunc), intent(inout), allocatable :: hybridXc
 
-    !> dense overlap matrix, required for hybridXc
+    !> Dense overlap matrix, required for hybridXc
     real(dp), intent(inout), allocatable :: SSqrReal(:,:)
 
     !> Integral container
@@ -6314,7 +6321,7 @@ contains
     !> Is the hamiltonian real (no k-points/molecule/gamma point)?
     logical, intent(in) :: tRealHS
 
-    !> K-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for k-points
@@ -6515,7 +6522,7 @@ contains
   end subroutine getGradients
 
 
-  !> use plumed to update derivatives
+  !> Use plumed to update derivatives
   subroutine updateDerivsByPlumed(env, plumedCalc, iGeoStep, derivs, energy, coord0, mass,&
       & tPeriodic, latVecs)
 
@@ -6525,25 +6532,25 @@ contains
     !> PLUMED calculator
     type(TPlumedCalc), allocatable, intent(inout) :: plumedCalc
 
-    !> steps taken during simulation
+    !> Steps taken during simulation
     integer, intent(in) :: iGeoStep
 
-    !> the derivatives array
+    !> The derivatives array
     real(dp), intent(inout), target, contiguous :: derivs(:,:)
 
-    !> current energy
+    !> Current energy
     real(dp), intent(in) :: energy
 
-    !> current atomic positions
+    !> Current atomic positions
     real(dp), intent(in), target, contiguous :: coord0(:,:)
 
-    !> atomic masses array
+    !> Atomic masses array
     real(dp), intent(in), target, contiguous :: mass(:)
 
-    !> periodic?
+    !> Periodic?
     logical, intent(in) :: tPeriodic
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(in), target, contiguous :: latVecs(:,:)
 
     if (.not. allocated(plumedCalc)) then
@@ -6586,40 +6593,40 @@ contains
     !> External field
     logical, intent(in) :: isExtField
 
-    !> method for calculating derivatives of S and H0
+    !> Method for calculating derivatives of S and H0
     type(TNonSccDiff), intent(in) :: nonSccDeriv
 
-    !> density matrix
+    !> Density matrix
     real(dp), intent(in) :: rhoPrim(:,:)
 
-    !> energy weighted density matrix
+    !> Energy weighted density matrix
     real(dp), intent(in) :: ERhoPrim(:)
 
-    !> electrons in orbitals
+    !> Electrons in orbitals
     real(dp), intent(in) :: qOutput(:,:,:)
 
-    !> reference charges
+    !> Reference charges
     real(dp), intent(in) :: q0(:,:,:)
 
-    !> non-SCC hamiltonian information
+    !> Non-SCC hamiltonian information
     type(TSlakoCont), intent(in) :: skHamCont
 
-    !> overlap information
+    !> Overlap information
     type(TSlakoCont), intent(in) :: skOverCont
 
-    !> repulsive information
+    !> Repulsive information
     class(TRepulsive), allocatable, intent(in) :: repulsive
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
     integer, intent(in) :: nNeighbourSK(:)
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index array for the start of atomic blocks in sparse arrays
@@ -6628,40 +6635,40 @@ contains
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> potentials acting
+    !> Potentials acting
     type(TPotentials), intent(in) :: potential
 
-    !> coordinates of all atoms
+    !> Coordinates of all atoms
     real(dp), intent(in) :: coord(:,:)
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(in) :: latVec(:,:)
 
-    !> inverse of the lattice vectors
+    !> Inverse of the lattice vectors
     real(dp), intent(in) :: invLatVec(:,:)
 
-    !> unit cell volume
+    !> Unit cell volume
     real(dp), intent(in) :: cellVol
 
-    !> central cell coordinates of atoms
+    !> Central cell coordinates of atoms
     real(dp), intent(inout) :: coord0(:,:)
 
-    !> stress tensor
+    !> Stress tensor
     real(dp), intent(out) :: totalStress(:,:)
 
-    !> energy derivatives with respect to lattice vectors
+    !> Energy derivatives with respect to lattice vectors
     real(dp), intent(out) :: totalLatDeriv(:,:)
 
-    !> internal pressure in cell
+    !> Internal pressure in cell
     real(dp), intent(out) :: intPressure
 
-    !> imaginary part of the density matrix (if present)
+    !> Imaginary part of the density matrix (if present)
     real(dp), intent(in), allocatable :: iRhoPrim(:,:)
 
     !> Solvation model
     class(TSolvation), allocatable, intent(inout) :: solvation
 
-    !> dispersion interactions
+    !> Dispersion interactions
     class(TDispersionIface), allocatable, intent(inout) :: dispersion
 
     !> Correction for halogen bonds
@@ -6760,22 +6767,22 @@ contains
   !> Calculates stress from external electric field.
   subroutine getExtFieldStress(latVec, cellVol, q0, qOutput, extPotGrad, coord0, stress)
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(in) :: latVec(:,:)
 
-    !> unit cell volume
+    !> Unit cell volume
     real(dp), intent(in) :: cellVol
 
-    !> reference atomic charges
+    !> Reference atomic charges
     real(dp), intent(in) :: q0(:,:,:)
 
-    !> number of electrons in each orbital
+    !> Number of electrons in each orbital
     real(dp), intent(in) :: qOutput(:,:,:)
 
     !> Gradient of the external field
     real(dp), intent(in) :: extPotGrad(:,:)
 
-    !> central cell coordinates of atoms
+    !> Central cell coordinates of atoms
     real(dp), intent(inout) :: coord0(:,:)
 
     !> Stress tensor
@@ -6807,13 +6814,13 @@ contains
   !> Removes forces components along constraint directions
   subroutine constrainForces(conAtom, conVec, derivs)
 
-    !> atoms being constrained
+    !> Atoms being constrained
     integer, intent(in) :: conAtom(:)
 
-    !> vector to project out forces
+    !> Vector to project out forces
     real(dp), intent(in) :: conVec(:,:)
 
-    !> on input energy derivatives, on exit resulting projected derivatives
+    !> On input energy derivatives, on exit resulting projected derivatives
     real(dp), intent(inout) :: derivs(:,:)
 
     integer :: ii, iAtom
@@ -6832,10 +6839,10 @@ contains
   subroutine constrainLatticeDerivs(totalLatDerivs, normLatVecs, tLatOptFixAng,&
       & tLatOptFixLen, tLatOptIsotropic, constrLatDerivs)
 
-    !> energy derivative with respect to lattice vectors
+    !> Energy derivative with respect to lattice vectors
     real(dp), intent(in) :: totalLatDerivs(:,:)
 
-    !> unit normals parallel to lattice vectors
+    !> Unit normals parallel to lattice vectors
     real(dp), intent(in) :: normLatVecs(:,:)
 
     !> Are the angles of the lattice being fixed during optimisation?
@@ -6844,10 +6851,10 @@ contains
     !> Are the magnitude of the lattice vectors fixed
     logical, intent(in) :: tLatOptFixLen(:)
 
-    !> is the optimisation isotropic
+    !> Is the optimisation isotropic
     logical, intent(in) :: tLatOptIsotropic
 
-    !> lattice vectors returned by the optimizer
+    !> Lattice vectors returned by the optimizer
     real(dp), intent(out) :: constrLatDerivs(:)
 
     real(dp) :: tmpLatDerivs(3, 3)
@@ -6881,22 +6888,22 @@ contains
   subroutine unconstrainLatticeVectors(constrLatVecs, origLatVecs, tLatOptFixAng, tLatOptFixLen,&
       & tLatOptIsotropic, newLatVecs)
 
-    !> packaged up lattice vectors (depending on optimisation mode)
+    !> Packaged up lattice vectors (depending on optimisation mode)
     real(dp), intent(in) :: constrLatVecs(:)
 
-    !> original vectors at start
+    !> Original vectors at start
     real(dp), intent(in) :: origLatVecs(:,:)
 
     !> Are the angles of the lattice vectors fixed
     logical, intent(in) :: tLatOptFixAng
 
-    !> are the magnitudes of the lattice vectors fixed
+    !> Are the magnitudes of the lattice vectors fixed
     logical, intent(in) :: tLatOptFixLen(:)
 
-    !> is the optimisation isotropic
+    !> Is the optimisation isotropic
     logical, intent(in) :: tLatOptIsotropic
 
-    !> resulting lattice vectors
+    !> Resulting lattice vectors
     real(dp), intent(out) :: newLatVecs(:,:)
 
     real(dp) :: tmpLatVecs(9)
@@ -6935,19 +6942,19 @@ contains
     !> Driver for the finite difference second derivatives
     type(TNumDerivs), intent(inout) :: derivDriver
 
-    !> first derivatives of energy at the current coordinates
+    !> First derivatives of energy at the current coordinates
     real(dp), intent(in) :: derivs(:,:)
 
-    !> indices of moving atoms
+    !> Indices of moving atoms
     integer, intent(in) :: indMovedAtoms(:)
 
-    !> indices of atoms for which 2nd derivatives should be calculated
+    !> Indices of atoms for which 2nd derivatives should be calculated
     integer, intent(in) :: indDerivAtoms(:)
 
-    !> atomic coordinates
+    !> Atomic coordinates
     real(dp), intent(inout) :: coord(:,:)
 
-    !> has the process terminated
+    !> Has the process terminated
     logical, intent(out) :: tGeomEnd
 
     real(dp) :: newCoords(3, size(indMovedAtoms))
@@ -6962,28 +6969,28 @@ contains
   subroutine getNextCoordinateOptStep(pGeoCoordOpt, energy, derivss, indMovedAtom, coord0,&
       & diffGeo, tCoordEnd, tRemoveExcitation)
 
-    !> optimiser for atomic coordinates
+    !> Optimiser for atomic coordinates
     type(TGeoOpt), intent(inout) :: pGeoCoordOpt
 
-    !> energies
+    !> Energies
     type(TEnergies), intent(in) :: energy
 
     !> Derivative of energy with respect to atomic coordinates
     real(dp), intent(in) :: derivss(:,:)
 
-    !> numbers of the moving atoms
+    !> Numbers of the moving atoms
     integer, intent(in) :: indMovedAtom(:)
 
-    !> central cell atomic coordinates
+    !> Central cell atomic coordinates
     real(dp), intent(inout) :: coord0(:,:)
 
-    !> largest change in atomic coordinates
+    !> Largest change in atomic coordinates
     real(dp), intent(out) :: diffGeo
 
-    !> has the geometry optimisation finished
+    !> Has the geometry optimisation finished
     logical, intent(out) :: tCoordEnd
 
-    !> remove excited state energy from the step, to be consistent with the forces
+    !> Remove excited state energy from the step, to be consistent with the forces
     logical, intent(in) :: tRemoveExcitation
 
     real(dp) :: derivssMoved(3 * size(indMovedAtom))
@@ -7008,13 +7015,13 @@ contains
   subroutine getNextLatticeOptStep(pGeoLatOpt, energy, constrLatDerivs, origLatVec, tLatOptFixAng,&
       & tLatOptFixLen, tLatOptIsotropic, indMovedAtom, latVec, coord0, diffGeo, tGeomEnd)
 
-    !> lattice vector optimising object
+    !> Lattice vector optimising object
     type(TGeoOpt), intent(inout) :: pGeoLatOpt
 
     !> Energy contributions and total
     type(TEnergies), intent(inout) :: energy
 
-    !> lattice vectors returned by the optimizer
+    !> Lattice vectors returned by the optimizer
     real(dp), intent(in) :: constrLatDerivs(:)
 
     !> Starting lattice vectors
@@ -7029,19 +7036,19 @@ contains
     !> Optimise isotropically
     logical, intent(in) :: tLatOptIsotropic
 
-    !> numbers of the moving atoms
+    !> Numbers of the moving atoms
     integer, intent(in) :: indMovedAtom(:)
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(inout) :: latVec(:,:)
 
-    !> central cell coordinates of atoms
+    !> Central cell coordinates of atoms
     real(dp), intent(inout) :: coord0(:,:)
 
     !> Maximum change in geometry at this step
     real(dp), intent(out) :: diffGeo
 
-    !> has the geometry optimisation finished
+    !> Has the geometry optimisation finished
     logical, intent(out) :: tGeomEnd
 
     real(dp) :: newLatVecsFlat(9), newLatVecs(3, 3), oldMovedCoords(3, size(indMovedAtom))
@@ -7082,16 +7089,16 @@ contains
     !> Masses of each chemical species
     real(dp), intent(in) :: mass(:)
 
-    !> unit cell volume
+    !> Unit cell volume
     real(dp), intent(in) :: cellVol
 
-    !> inverse of the lattice vectors
+    !> Inverse of the lattice vectors
     real(dp), intent(in) :: invLatVec(:,:)
 
-    !> species of atoms in the central cell
+    !> Species of atoms in the central cell
     integer, intent(in) :: species0(:)
 
-    !> numbers of the moving atoms
+    !> Numbers of the moving atoms
     integer, intent(in) :: indMovedAtom(:)
 
     !> Is stress being evaluated?
@@ -7103,10 +7110,10 @@ contains
     !> Energy contributions and total
     type(TEnergies), intent(inout) :: energy
 
-    !> central cell coordinates of atoms
+    !> Central cell coordinates of atoms
     real(dp), intent(inout) :: coord0(:,:)
 
-    !> lattice vectors
+    !> Lattice vectors
     real(dp), intent(inout) :: latVec(:,:)
 
     !> Internal pressure in the unit cell
@@ -7183,10 +7190,10 @@ contains
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> k-points in the system (0,0,0) if molecular
+    !> The k-points in the system (0,0,0) if molecular
     real(dp), intent(in) :: kPoint(:,:)
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -7198,7 +7205,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Index for which unit cell atoms are associated with
@@ -7213,13 +7220,13 @@ contains
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> species of all atoms in the system
+    !> Species of all atoms in the system
     integer, intent(in) :: species(:)
 
-    !> label for each atomic chemical species
+    !> Label for each atomic chemical species
     character(*), intent(in) :: speciesName(:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Localisation measure of single particle states
@@ -7240,7 +7247,7 @@ contains
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> atomic coordinates
+    !> Atomic coordinates
     real(dp), intent(in) :: coord(:,:)
 
     integer :: nFilledLev, nAtom, nSpin
@@ -7364,16 +7371,16 @@ contains
     !> Socket may be unallocated (as on follower processes)
     type(ipiSocketComm), allocatable, intent(inout) :: socket
 
-    !> energy structure
+    !> Energy structure
     type(TEnergies), intent(in) :: energy
 
-    !> energy derivatives
+    !> Energy derivatives
     real(dp), intent(in) :: derivs(:,:)
 
-    !> stress tensor
+    !> Stress tensor
     real(dp), intent(in) :: totalStress(:,:)
 
-    !> cell volume
+    !> Cell volume
     real(dp), intent(in) :: cellVol
 
     if (env%tGlobalLead) then
@@ -7403,13 +7410,13 @@ contains
     !> Dense matrix descriptor
     type(TDenseDescr), intent(in) :: denseDesc
 
-    !> hamiltonian in sparse storage
+    !> Hamiltonian in sparse storage
     real(dp), intent(in) :: h0(:)
 
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -7418,7 +7425,7 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Electronic solver information
@@ -7427,19 +7434,19 @@ contains
     !> Number of current geometry step
     integer, intent(in) :: iGeoStep
 
-    !> dense hamiltonian matrix
+    !> Dense hamiltonian matrix
     real(dp), intent(out) :: HSqrReal(:,:)
 
-    !> dense overlap matrix
+    !> Dense overlap matrix
     real(dp), intent(out) :: SSqrReal(:,:)
 
     !> Eigenvectors on eixt
     real(dp), intent(inout) :: eigvecsReal(:,:,:)
 
-    !> eigenvalues
+    !> Eigenvalues
     real(dp), intent(out) :: eigen(:,:,:)
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
     !> Status of operation
@@ -7501,7 +7508,7 @@ contains
     !> Eigenvectors on eixt
     real(dp), intent(inout) :: eigvecsReal(:,:,:)
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
     real(dp), allocatable :: tmpMat(:,:)
@@ -7566,7 +7573,7 @@ contains
     !> Dense matrix descriptor
     type(TDenseDescr), intent(in) :: denseDesc
 
-    !> list of neighbours for each atom
+    !> List of neighbours for each atom
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> Number of neighbours for each of the atoms
@@ -7575,13 +7582,13 @@ contains
     !> Index array for the start of atomic blocks in sparse arrays
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atoms to the original unique atom
+    !> Map from image atoms to the original unique atom
     integer, intent(in) :: img2CentCell(:)
 
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> species of all atoms
+    !> Species of all atoms
     integer, target, intent(in) :: species(:)
 
     !> Coordinates of all atoms including images
@@ -7593,10 +7600,10 @@ contains
     !> Is the geometry helical
     logical, intent(in) :: tHelical
 
-    !> eigenvectors
+    !> Eigenvectors
     real(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Sparse density matrix
@@ -7694,22 +7701,22 @@ contains
     !> Number of neighbours for each atom within overlap distance
     integer, intent(in) :: nNeighbourSK(:)
 
-    !> image to actual atom indexing
+    !> Image to actual atom indexing
     integer, intent(in) :: img2CentCell(:)
 
-    !> sparse matrix indexing array
+    !> Sparse matrix indexing array
     integer, intent(in) :: iSparseStart(:,:)
 
     !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(inout) :: rhoPrim(:,:)
 
     !> Integral container
     type(TIntegral), intent(in) :: ints
 
-    !> imaginary part of density matrix
+    !> Imaginary part of density matrix
     real(dp), intent(in), allocatable :: iRhoPrim(:,:)
 
     !> Dual atomic charges
@@ -7721,7 +7728,7 @@ contains
     !> Onsite Mulliken charges per atom
     real(dp), intent(inout), allocatable :: qNetAtom(:)
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
     integer :: iL
@@ -7789,13 +7796,13 @@ contains
     !> Library interface handler
     type(TTBLite), allocatable, intent(inout) :: tblite
 
-    !> atomic orbital information
+    !> Atomic orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> species of all atoms
+    !> Species of all atoms
     integer, target, intent(in) :: species(:)
 
-    !> neighbours to atoms
+    !> Neighbours to atoms
     type(TNeighbourList), intent(in) :: neighbourList
 
     !> List of neighbouring atoms (symmetric version)
@@ -7807,28 +7814,28 @@ contains
     !> Index for atomic blocks in sparse data
     integer, intent(in) :: iSparseStart(:,:)
 
-    !> map from image atom to real atoms
+    !> Map from image atom to real atoms
     integer, intent(in) :: img2CentCell(:)
 
-    !> non-SCC hamiltonian (sparse)
+    !> Non-SCC hamiltonian (sparse)
     real(dp), intent(in) :: H0(:)
 
     !> Integral container
     type(TIntegral), intent(inout) :: ints
 
-    !> spin constants
+    !> Spin constants
     real(dp), allocatable, intent(in) :: spinW(:,:,:)
 
-    !> unit cell volume
+    !> Unit cell volume
     real(dp), intent(in) :: cellVol
 
-    !> external pressure
+    !> External pressure
     real(dp), intent(in) :: extPressure
 
-    !> energy contributions
+    !> Energy contributions
     type(TEnergies), intent(inout) :: energy
 
-    !> reference atomic occupations
+    !> Reference atomic occupations
     real(dp), intent(in) :: q0(:,:,:)
 
     !> Atoms over which to sum the total energies
@@ -7840,10 +7847,10 @@ contains
     !> Openmmpolcalc
     type(TOMMPInterface), allocatable, intent(inout) :: openmmpolCalc
 
-    !> third order SCC interactions
+    !> Third order SCC interactions
     type(TThirdOrder), allocatable, intent(inout) :: thirdOrd
 
-    !> potentials acting
+    !> Potentials acting
     type(TPotentials), intent(inout) :: potential
 
     !> Data for hybrid xc-functional calculation
@@ -7861,7 +7868,7 @@ contains
     !> Spin orbit constants if required
     real(dp), allocatable, intent(in) :: xi(:,:)
 
-    !> is an external electric field present
+    !> Is an external electric field present
     logical, intent(in) :: isExtField
 
     !> Is the extended Lagrangian being used for MD
@@ -7870,13 +7877,13 @@ contains
     !> Are there orbital potentials present
     type(TDftbU), intent(in), allocatable :: dftbU
 
-    !> electron entropy contribution
+    !> Electron entropy contribution
     real(dp), intent(in) :: TS(:)
 
     !> Proxy for querying Q-dependant external potentials
     type(TQDepExtPotProxy), intent(inout), allocatable :: qDepExtPot
 
-    !> block (dual) atomic populations
+    !> Block (dual) atomic populations
     real(dp), intent(in), allocatable :: qBlock(:,:,:,:)
 
     !> Imaginary part of block atomic populations
@@ -7889,22 +7896,22 @@ contains
     !> from the given number of electrons
     real(dp), intent(inout) :: Ef(:)
 
-    !> sparse density matrix
+    !> Sparse density matrix
     real(dp), intent(inout) :: rhoPrim(:,:)
 
     !> Corrections terms for on-site elements
     real(dp), intent(in), allocatable :: onSiteElements(:,:,:,:)
 
-    !> dispersion interactions
+    !> Dispersion interactions
     class(TDispersionIface), allocatable, intent(inout) :: dispersion
 
     !> Has the calculation converged>
     logical, intent(in) :: tConverged
 
-    !> species of atoms in the central cell
+    !> Species of atoms in the central cell
     integer, intent(in) :: species0(:)
 
-    !> reference n_0 charges for each atom
+    !> Reference n_0 charges for each atom
     real(dp), intent(in) :: referenceN0(:,:)
 
     !> Onsite Mulliken charges per atom
@@ -7913,7 +7920,7 @@ contains
     !> Multipole container
     type(TMultipole), intent(inout) :: multipole
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), allocatable, intent(inout) :: reks
 
     !> Error status
@@ -8120,16 +8127,16 @@ contains
   !> Compute the several energy contributions
   subroutine optimizeFONsAndWeights(eigvecs, filling, energy, reks)
 
-    !> eigenvectors
+    !> Eigenvectors
     real(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> occupations (level, kpoint, spin)
+    !> Occupations (level, kpoint, spin)
     real(dp), intent(out) :: filling(:,:,:)
 
-    !> energy contributions
+    !> Energy contributions
     type(TEnergies), intent(inout) :: energy
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
     call optimizeFons(reks)
@@ -8151,13 +8158,13 @@ contains
   subroutine getReksNextInputCharges(qInput, qOutput, qDiff, sccErrorQ, sccTol, tConverged,&
       & iSccIter, minSccIter, maxSccIter, iGeoStep, tStopScc, eigvecs, reks)
 
-    !> input charges (for potentials)
+    !> Input charges (for potentials)
     real(dp), intent(inout) :: qInput(:, :, :)
 
     !> Output electrons
     real(dp), intent(inout) :: qOutput(:,:,:)
 
-    !> charge differences between input and output charges
+    !> Charge differences between input and output charges
     real(dp), intent(inout) :: qDiff(:,:,:)
 
     !> Self-consistency error
@@ -8172,10 +8179,10 @@ contains
     !> Number of current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC iterations to perform
+    !> Minimum number of SCC iterations to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC iterations before terminating loop
+    !> Maximum number of SCC iterations before terminating loop
     integer, intent(in) :: maxSccIter
 
     !> Number of current geometry step
@@ -8187,7 +8194,7 @@ contains
     !> Eigenvectors on eixt
     real(dp), intent(inout) :: eigvecs(:,:,:)
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
     qDiff(:,:,:) = qOutput - qInput
@@ -8219,10 +8226,10 @@ contains
     !> Number of current SCC step
     integer, intent(in) :: iSccIter
 
-    !> minimum number of SCC iterations to perform
+    !> Minimum number of SCC iterations to perform
     integer, intent(in) :: minSccIter
 
-    !> maximum number of SCC iterations before terminating loop
+    !> Maximum number of SCC iterations before terminating loop
     integer, intent(in) :: maxSccIter
 
     !> Number of current geometry step
@@ -8262,22 +8269,22 @@ contains
   !> Set correct dipole moment according to type of REKS calculation
   subroutine assignDipoleMoment(dipoleTmp, dipoleMoment, iDet, tDipole, reks, isSingleState)
 
-    !> resulting temporary dipole moment
+    !> Resulting temporary dipole moment
     real(dp), allocatable, intent(in) :: dipoleTmp(:)
 
-    !> resulting dipole moment
+    !> Resulting dipole moment
     real(dp), allocatable, intent(inout) :: dipoleMoment(:,:)
 
     !> Which state is being calculated in the determinant loop?
     integer, intent(in) :: iDet
 
-    !> calculate an electric dipole?
+    !> Calculate an electric dipole?
     logical, intent(in) :: tDipole
 
-    !> data type for REKS
+    !> Data type for REKS
     type(TReksCalc), intent(inout) :: reks
 
-    !> calculate a single-state REKS?
+    !> Calculate a single-state REKS?
     logical, intent(in) :: isSingleState
 
     ! Set correct dipole moment to this%dipoleMoment

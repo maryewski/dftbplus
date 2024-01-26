@@ -2884,7 +2884,7 @@ contains
     !> Number of k-points for the calculation
     integer, intent(in) :: nKPoint
 
-    !> K-points for the system
+    !> The k-points for the system
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Weights for the k-points
@@ -2903,7 +2903,7 @@ contains
   end function isGammaOnly
 
 
-  !> K-points in Euclidean space
+  !> The k-points in Euclidean space
   subroutine getEuclideanKSampling(poorKSampling, checkStopHybridCalc, ctrl, node, geo, errStatus)
 
     !> Is this k-point grid usable to integrate properties like the energy, charges, ...?
@@ -3091,7 +3091,7 @@ contains
   end subroutine getEuclideanKSampling
 
 
-  !> K-points for helical boundaries
+  !> The k-points for helical boundaries
   subroutine getHelicalKSampling(poorKSampling, ctrl, node, geo)
 
     !> Is this k-point grid usable to integrate properties like the energy, charges, ...?
@@ -3252,6 +3252,11 @@ contains
     if (geo%tPeriodic) then
       call getChildValue(node, "EwaldParameter", ctrl%ewaldAlpha, 0.0_dp)
       call getChildValue(node, "EwaldTolerance", ctrl%tolEwald, 1.0e-9_dp)
+    end if
+
+    if (geo%tHelical) then
+      ! Tolerance for k-points being commensurate with C_n rotation
+      call getChildValue(node, "HelicalSymmetryTol", ctrl%helicalSymTol, 1.0E-6_dp)
     end if
 
     ! self consistency required or not to proceed
@@ -6532,7 +6537,7 @@ contains
 
     call getChildValue(pNode, "OverrideBulkBC", pTmp, "none")
     poisson%overrBulkBC(:) = -1
-    if (associated(pNode)) then
+    if (associated(pTmp)) then
       call getPoissonBoundaryConditionOverrides(pTmp, [ 0, 1, 2 ], poisson%overrBulkBC)
     end if
 

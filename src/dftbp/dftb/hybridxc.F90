@@ -81,7 +81,7 @@ module dftbp_dftb_hybridxc
   end type THybridXcFuncEnum
 
 
-  !> Enumerator for algorithms to build up the range-separated Hamiltonian.
+  !> Enumerator for algorithms to build up the Fock-type exchange contribution to the Hamiltonian.
   type :: THybridXcAlgoEnum
 
     !> Neighbour based
@@ -139,7 +139,7 @@ module dftbp_dftb_hybridxc
   end type THybridXcSKTag
 
 
-  !> Abstract base type for range-separated functionality, some procedures need to be overridden.
+  !> Abstract base type for hybrid functionality, some procedures need to be overridden.
   type, abstract :: THybridXcFunc
 
     !> Real-space coordinates of atoms (relative units), potentially including periodic images
@@ -185,7 +185,7 @@ module dftbp_dftb_hybridxc
     !> Previous delta density matrix in screening by tolerance
     real(dp), allocatable :: dRhoPrevCplxHS(:,:,:,:,:,:)
 
-    !> Is screening initialised
+    !> Is screening initialised?
     logical :: tScreeningInited
 
     !> Threshold for screening by value
@@ -234,7 +234,7 @@ module dftbp_dftb_hybridxc
     !> Descending neighbour indices in terms of overlap estimates
     type(TWrappedInt1), allocatable :: overlapIndices(:)
 
-    !> K-point compatible BvK real-space shifts in relative coordinates (units of latVecs)
+    !> The k-point compatible BvK real-space shifts in relative coordinates (units of latVecs)
     real(dp), allocatable :: bvKShifts(:,:)
 
     !> Supercell folding coefficients (diagonal elements)
@@ -448,16 +448,16 @@ contains
 
     ! Perform basic consistency checks for optional arguments
     if (tPeriodic .and. (.not. present(gSummationCutoff))) then
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Periodic systems require g-summation&
-          & cutoff, which is not present.")
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Periodic systems require g-summation cutoff,&
+          & which is not present.")
     end if
     if ((.not. tRealHS) .and. (.not. present(coeffsDiag))) then
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: General k-point case requires supercell&
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: General k-point case requires supercell&
           & folding coefficients, which are not present.")
     end if
     if ((.not. tRealHS) .and. gammaType == hybridXcGammaTypes%mic&
         & .and. (.not. present(wignerSeitzReduction))) then
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: General k-point case with MIC algorithm&
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: General k-point case with MIC algorithm&
           & requires Wigner-Seitz reduction parameter, which is not present.")
     end if
 
@@ -469,18 +469,18 @@ contains
       allocate(THybridXcFunc_mic:: this)
     case (hybridXcGammaTypes%truncated)
       if (.not. present(gammaCutoff)) then
-        @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Coulomb truncation requires cutoff,&
-            & which is not present.")
+        @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Coulomb truncation requires cutoff, which is&
+            & not present.")
       end if
       allocate(THybridXcFunc_truncated:: this)
     case (hybridXcGammaTypes%truncatedAndDamped)
       if (.not. present(gammaCutoff)) then
-        @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Coulomb truncation requires cutoff,&
-            & which is not present.")
+        @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Coulomb truncation requires cutoff, which is&
+            & not present.")
       end if
       allocate(THybridXcFunc_truncatedAndDamped:: this)
     case default
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Invalid gamma function type obtained.")
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Invalid gamma function type obtained.")
     end select
 
     this%gammaType = gammaType
@@ -583,8 +583,8 @@ contains
     end if
 
     if (tPeriodic .and. (.not. present(latVecs))) then
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Periodic structure, but no lattice&
-          & vectors handed over.")
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Periodic structure, but no lattice vectors&
+          & handed over.")
     end if
 
     if (present(coeffsDiag)) then
@@ -629,7 +629,7 @@ contains
       !> Supercell folding coefficients (diagonal elements)
       integer, intent(in) :: coeffsDiag(:)
 
-      !> K-point compatible BvK real-space shifts in relative coordinates
+      !> The k-point compatible BvK real-space shifts in relative coordinates
       real(dp), intent(out), allocatable :: bvKShifts(:,:)
 
       !! Number of BvK real-space shifts
@@ -1235,8 +1235,8 @@ contains
     integer :: nAtom0
 
     if (.not. (allocated(this%squareOverEst) .and. allocated(this%overlapIndices))) then
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: 4-loop composite index construction&
-          & depends on overlap estimates, that are not allocated yet.")
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: 4-loop composite index construction depends on&
+          & overlap estimates, that are not allocated yet.")
     end if
 
     nAtom0 = size(this%species0)
@@ -1338,11 +1338,11 @@ contains
 
     select case(this%hybridXcAlg)
     case (hybridXcAlgo%thresholdBased)
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Thresholded algorithm for non-periodic&
-          & or Gamma-only systems does not yet support MPI parallelism (choose matrix-based&
-          & algorithm instead).")
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Thresholded algorithm for non-periodic or&
+          & Gamma-only systems does not yet support MPI parallelism (choose matrix-based algorithm&
+          & instead).")
     case (hybridXcAlgo%neighbourBased)
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Neighbour-list based algorithm for&
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Neighbour-list based algorithm for&
           & non-periodic or Gamma-only systems does not yet support MPI parallelism (choose&
           & matrix-based algorithm instead).")
     case (hybridXcAlgo%matrixBased)
@@ -1408,8 +1408,8 @@ contains
     select case(this%hybridXcAlg)
     case (hybridXcAlgo%thresholdBased)
       if (tPeriodic) then
-        @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Thresholded algorithm not implemented&
-            & for Gamma-point periodic systems.")
+        @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Thresholded algorithm not implemented for&
+            & Gamma-point periodic systems.")
       else
         call addCamHamiltonianThreshold_cluster(this, SSqrReal, deltaRhoSqr, iNeighbour,&
             & nNeighbourCam, iSquare, HSqrReal, orb)
@@ -1460,7 +1460,7 @@ contains
     !> Orbital information.
     type(TOrbitals), intent(in) :: orb
 
-    !> K-points in relative coordinates to calculate delta H(k) for
+    !> The k-points in relative coordinates to calculate delta H(k) for
     real(dp), intent(in) :: kPoints(:,:)
 
     !> Composite index for mapping iK/iS --> iGlobalKS for arrays present at every MPI rank
@@ -1502,6 +1502,8 @@ contains
 
   !> Adds CAM range-separated contributions to Hamiltonian, using the thresholding algorithm.
   !! (non-periodic version)
+  !!
+  !! Eq.(31) of J. Chem. Phys. 143, 184107 (2015) (DOI: 10.1063/1.4935095)
   subroutine addCamHamiltonianThreshold_cluster(this, overlap, deltaRho, iNeighbour, nNeighbourCam,&
       & iSquare, hamiltonian, orb)
 
@@ -1681,6 +1683,9 @@ contains
 
   !> Adds CAM range-separated contributions to Hamiltonian, using neighbour-list based algorithm.
   !! (non-periodic and Gamma-only version)
+  !!
+  !! Non-periodic or Gamma-only approximation of
+  !! Eq.(43) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianNeighbour_real(this, deltaRhoSqr, overSparse, iNeighbour,&
       & nNeighbourCam, iSquare, iPair, orb, img2CentCell, HSqrReal)
 
@@ -1911,11 +1916,11 @@ contains
 
 #:if WITH_SCALAPACK
 
-  !> Update Hamiltonian with CAM range-separated contributions, using the matrix-based algorithm.
-  !! (non-periodic, real version)
+  !> Update Hamiltonian with CAM range-separated contributions, using a matrix-matrix multiplication
+  !! based algorithm.
+  !! (real non-periodic and real Gamma-only version)
   !!
-  !! The routine provides a matrix-matrix multiplication based implementation of the 3rd term in
-  !! Eq. 26 in https://doi.org/10.1063/1.4935095
+  !! Eq.(B3) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianMatrix_real_blacs(this, env, denseDesc, overlap, densSqr, HH)
 
     !> Class instance
@@ -1971,7 +1976,7 @@ contains
     !> Get orbital-by-orbital gamma matrix
     subroutine initGamma(this, env, denseDesc, camGammaAO)
 
-      !> class instance
+      !> Class instance
       class(THybridXcFunc), intent(inout) :: this
 
       !> Environment settings
@@ -2006,7 +2011,7 @@ contains
     !> Evaluates the Hamiltonian using PGEMM operations.
     subroutine evaluateHamiltonian(this, desc, Smat, Dmat, camGammaAO, Hcam)
 
-      !> class instance
+      !> Class instance
       class(THybridXcFunc), intent(inout) :: this
 
       !> BLACS matrix descriptor
@@ -2068,11 +2073,11 @@ contains
 
 #:else
 
-  !> Update Hamiltonian with CAM range-separated contributions, using the matrix-based algorithm.
-  !! (non-periodic, real version)
+  !> Update Hamiltonian with CAM range-separated contributions, using a matrix-matrix multiplication
+  !! based algorithm.
+  !! (real non-periodic and real Gamma-only version)
   !!
-  !! The routine provides a matrix-matrix multiplication based implementation of the 3rd term in
-  !! Eq. 26 in https://doi.org/10.1063/1.4935095
+  !! Eq.(B3) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianMatrix_real(this, iSquare, overlap, densSqr, HH)
 
     !> Class instance
@@ -2234,11 +2239,11 @@ contains
 #:endif
 
 
-  !> Update Hamiltonian with CAM range-separated contributions, using matrix-based algorithm.
-  !! (non-periodic, complex version)
+  !> Update Hamiltonian with CAM range-separated contributions, using a matrix-matrix multiplication
+  !! based algorithm.
+  !! (complex non-periodic and complex Gamma-only version)
   !!
-  !! The routine provides a matrix-matrix multiplication based implementation of the 3rd term in
-  !! Eq. 26 in https://doi.org/10.1063/1.4935095
+  !! Eq.(B3) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianMatrix_cluster_cmplx(this, iSquare, overlap, densSqr, HH)
 
     !> Class instance
@@ -2407,6 +2412,8 @@ contains
 
   !> Adds CAM range-separated contributions to Hamiltonian, using neighbour-list based algorithm.
   !! (k-point version)
+  !!
+  !! Eq.(43) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianNeighbour_kpts_mic(this, env, deltaRhoSqr, symNeighbourList,&
       & nNeighbourCamSym, rCellVecs, cellVecs, iSquare, orb, kPoints, iKiSToiGlobalKS, HSqrCplxCam,&
       & errStatus)
@@ -2438,7 +2445,7 @@ contains
     !> Orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> K-points in relative coordinates to calculate delta H(k) for
+    !> The k-points in relative coordinates to calculate delta H(k) for
     real(dp), intent(in) :: kPoints(:,:)
 
     !> Composite index for mapping iK/iS --> iGlobalKS for arrays present at every MPI rank
@@ -2733,6 +2740,8 @@ contains
 
   !> Adds range-separated contributions to Hamiltonian, using neighbour-list based algorithm.
   !! (k-point version)
+  !!
+  !! Eq.(43) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamHamiltonianNeighbour_kpts_ct(this, env, deltaRhoSqr, symNeighbourList,&
       & nNeighbourCamSym, cellVecs, iSquare, orb, kPoints, iKiSToiGlobalKS, HSqrCplxCam, errStatus)
 
@@ -2760,7 +2769,7 @@ contains
     !> Orbital information
     type(TOrbitals), intent(in) :: orb
 
-    !> K-points in relative coordinates to calculate delta H(k) for
+    !> The k-points in relative coordinates to calculate delta H(k) for
     real(dp), intent(in) :: kPoints(:,:)
 
     !> Composite index for mapping iK/iS --> iGlobalKS for arrays present at every MPI rank
@@ -3090,7 +3099,7 @@ contains
     !> Composite index for mapping iK/iS --> iGlobalKS for arrays present at every MPI rank
     integer, intent(in) :: iKiSToiGlobalKS(:,:)
 
-    !> K-point weights
+    !> The k-point weights
     real(dp), intent(in) :: kWeights(:)
 
     !> Complex, dense, square k-space delta density matrix of all spins/k-points
@@ -3186,7 +3195,7 @@ contains
     !> Hamiltonian matrix
     complex(dp), intent(in) :: hamiltonian(:,:)
 
-    !> K-point weight (for energy contribution)
+    !> The k-point weight (for energy contribution)
     real(dp), intent(in) :: kWeight
 
     !> Density matrix in k-space
@@ -4048,7 +4057,7 @@ contains
     !> Environment settings
     type(TEnvironment), intent(in) :: env
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Square (unpacked) delta density matrix
@@ -4095,7 +4104,7 @@ contains
 
     select case(this%hybridXcAlg)
     case (hybridXcAlgo%thresholdBased, hybridXcAlgo%neighbourBased)
-      @:RAISE_ERROR(errStatus, -1, "Range-separated Module: MPI parallelized force evaluation not&
+      @:RAISE_ERROR(errStatus, -1, "HybridXc Module: MPI parallelized force evaluation not&
           & supported, choose matrix-based algorithm instead.")
     case (hybridXcAlgo%matrixBased)
       call addCamGradientsMatrix_real_blacs(this, env, parallelKS, deltaRhoSqr, SSqrReal,&
@@ -4175,8 +4184,8 @@ contains
     case (hybridXcAlgo%thresholdBased, hybridXcAlgo%neighbourBased)
       if (tPeriodic) then
         if (.not. (present(symNeighbourList) .and. present(nNeighbourCamSym))) then
-          @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Gamma-only matrix-based force&
-              & algorithm requested but necessary inputs not present.")
+          @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Gamma-only matrix-based force algorithm&
+              & requested but necessary inputs not present.")
         end if
         call addCamGradientsNeighbour_gamma(this, deltaRhoSqr, skOverCont, symNeighbourList,&
             & nNeighbourCamSym, iSquare, orb, derivator, gradients)
@@ -4186,8 +4195,8 @@ contains
       end if
     case (hybridXcAlgo%matrixBased)
       if (.not. (present(symNeighbourList) .and. present(nNeighbourCamSym))) then
-        @:RAISE_ERROR(errStatus, -1, "Range-separated Module: Real matrix-based force algorithm&
-            & requested but necessary inputs not present.")
+        @:RAISE_ERROR(errStatus, -1, "HybridXc Module: Real matrix-based force algorithm requested&
+            & but necessary inputs not present.")
       end if
       call addCamGradientsMatrix_real(this, deltaRhoSqr, SSqrReal, skOverCont,&
           & symNeighbourList, nNeighbourCamSym, iSquare, orb, derivator, gradients)
@@ -4200,6 +4209,10 @@ contains
 
   !> Adds gradients due to CAM range-separated contributions, using the neighbour-list based
   !! formulation (non-periodic and Gamma-only version).
+  !!
+  !! PhD thesis of Vitalij Lutsker (2015)
+  !! "Range-Separated Hybrid Functionals in the Density Functional-Based Tight-Binding Method"
+  !! Appendix, Section E, Eq.(E.1-E.9)
   subroutine addCamGradientsNeighbour_cluster(this, derivator, deltaRhoSqr, skOverCont, orb,&
       & iSquare, SSqrReal, iNeighbour, nNeighbourSK, gradients)
 
@@ -4728,7 +4741,7 @@ contains
     !> Dense matrix descriptor
     type(TDenseDescr), intent(in) :: denseDesc
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Distributed matrix (source)
@@ -4800,7 +4813,7 @@ contains
     !> Dense matrix descriptor
     type(TDenseDescr), intent(in) :: denseDesc
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Collected, full square matrix (source)
@@ -4862,6 +4875,8 @@ contains
 
   !> Adds CAM gradients due to CAM range-separated contributions, using a matrix-based formulation.
   !! (non-periodic and Gamma-only version)
+  !!
+  !! Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamGradientsMatrix_real_blacs(this, env, parallelKS, deltaRhoSqr,&
       & overlap, skOverCont, symNeighbourList, nNeighbourCamSym, orb, derivator, denseDesc,&
       & nSpin, gradients)
@@ -4872,7 +4887,7 @@ contains
     !> Environment settings
     type(TEnvironment), intent(in) :: env
 
-    !> K-points and spins to process
+    !> The k-points and spins to process
     type(TParallelKS), intent(in) :: parallelKS
 
     !> Square (unpacked) delta density matrix
@@ -5037,6 +5052,8 @@ contains
 
 
   !> Calculates derivative of the (long-range + HF full-range) gamma interaction w.r.t. given atom.
+  !!
+  !! 2nd term of Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine getUnpackedCamGammaAOPrime(env, denseDesc, orb, iAtomPrime, camdGammaEval0,&
       & camdGammaAO)
 
@@ -5089,6 +5106,8 @@ contains
 
   !> Calculates the derivative of the square, dense, unpacked, Gamma-point overlap matrix w.r.t.
   !! given atom.
+  !!
+  !! 1st term of Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine getUnpackedOverlapPrime(env, denseDesc, iAtomPrime, skOverCont, orb, derivator,&
       & symNeighbourList, nNeighbourCamSym, iSquare, rCoords, overSqrPrime)
 
@@ -5164,6 +5183,8 @@ contains
 
   !> Adds CAM gradients due to CAM range-separated contributions, using a matrix-based formulation.
   !! (non-periodic and Gamma-only version)
+  !!
+  !! Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine addCamGradientsMatrix_real(this, deltaRhoSqr, overlap, skOverCont,&
       & symNeighbourList, nNeighbourCamSym, iSquare, orb, derivator, gradients)
 
@@ -5328,6 +5349,8 @@ contains
 
 
   !> Calculates derivative of the (long-range + HF full-range) gamma interaction w.r.t. given atom.
+  !!
+  !! 2nd term of Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine getUnpackedCamGammaAOPrime(iAtomPrime, camdGammaEval0, iSquare, camdGammaAO)
 
     !> Overlap derivative calculated w.r.t. this atom in the central cell
@@ -5363,6 +5386,8 @@ contains
 
   !> Calculates the derivative of the square, dense, unpacked, Gamma-point overlap matrix w.r.t.
   !! given atom.
+  !!
+  !! 1st term of Eq.(B5) of Phys. Rev. Materials 7, 063802 (DOI: 10.1103/PhysRevMaterials.7.063802)
   subroutine getUnpackedOverlapPrime(iAtomPrime, skOverCont, orb, derivator, symNeighbourList,&
       & nNeighbourCamSym, iSquare, rCoords, overSqrPrime)
 
@@ -5462,10 +5487,10 @@ contains
     !> Orbital information.
     type(TOrbitals), intent(in) :: orb
 
-    !> K-points in relative coordinates to calculate delta H(k) for
+    !> The k-points in relative coordinates to calculate delta H(k) for
     real(dp), intent(in) :: kPoints(:,:)
 
-    !> K-point weights (for energy contribution)
+    !> The k-point weights (for energy contribution)
     real(dp), intent(in) :: kWeights(:)
 
     !> Sparse overlap container

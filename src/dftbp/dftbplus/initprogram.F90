@@ -345,7 +345,7 @@ module dftbp_dftbplus_initprogram
     !> Nr. of K-points
     integer :: nKPoint
 
-    !> K-points
+    !> The k-points
     real(dp), allocatable :: kPoint(:,:)
 
     !> Weight of the K-Points
@@ -1448,9 +1448,9 @@ contains
       end if
       this%kWeight(:) = input%ctrl%kWeight / sum(input%ctrl%kWeight)
       if (this%tHelical) then
-        if (any(abs(this%kPoint(2,:)*nint(this%latVec(3,1))&
-            & -nint(this%kPoint(2,:)*nint(this%latVec(3,1)))) > epsilon(1.0_dp))) then
-          call error("Specified k-value(s) incommensurate with C_n symmetry operation.")
+        if (any(abs(this%kPoint(2,:) * nint(this%latVec(3,1)) - nint(this%kPoint(2,:) *&
+            & nint(this%latVec(3,1)))) > input%ctrl%helicalSymTol)) then
+          call warning("Specified k-value(s) incommensurate with C_n symmetry operation.")
         end if
       end if
     else
@@ -1556,8 +1556,6 @@ contains
       allocate(this%speciesMass(this%nType))
       this%speciesMass(:) = input%slako%mass(:)
     case(hamiltonianTypes%xtb)
-      ! TODO
-      ! call error("xTB calculation currently not supported")
       allocate(this%speciesMass(this%nType))
       this%speciesMass(:) = getAtomicMass(this%speciesName)
     end select
@@ -1604,8 +1602,6 @@ contains
         this%cutOff%mCutOff = max(this%cutOff%mCutOff, this%repulsive%getRCutOff())
       end if
     case(hamiltonianTypes%xtb)
-      ! TODO
-      ! call error("xTB calculation currently not supported")
       this%cutOff%skCutoff = this%tblite%getRCutoff()
       this%cutOff%mCutoff = this%cutOff%skCutoff
     end select
@@ -2570,8 +2566,8 @@ contains
         call error("PP-RPA does not support ${ERR}$")
       end if
     #:endfor
-    #:for VAR, ERR in [("tShellResolved","shell resolved hamiltonians"),&
-      & ("tDampH","H damping")]
+    #:for VAR, ERR in [("tShellResolved", "shell resolved hamiltonians"),&
+      & ("tDampH", "H damping")]
       if (input%ctrl%${VAR}$) then
         call error("PP-RPA does not support ${ERR}$")
       end if
@@ -4654,8 +4650,7 @@ contains
       @:ASSERT(size(input%slako%skHubbU, dim=2) == nSpecies)
       hubbU(:,:) = input%slako%skHubbU(1:orb%mShell, :)
     case(hamiltonianTypes%xtb)
-      ! TODO
-      ! call error("xTB calculation currently not supported")
+      ! handled elsewhere
     end select
 
     if (allocated(input%ctrl%hubbU)) then
@@ -5789,9 +5784,15 @@ contains
       call error("Hybrid calculations not implemented for non-colinear calculations.")
     end if
 
-    if ((.not. this%tRealHS) .and. this%nSpin == 2) then
-      call error("Hybrid functionality currently does not yet support spin-polarization for&
-          & periodic systems beyond the Gamma-point.")
+    if ((.not. this%tRealHS) .and. this%nSpin == 2&
+        & .and. hybridXcInp%gammaType /= hybridXcGammaTypes%truncated) then
+      call error("Hybrid functionality does not yet support spin-polarized calculations of periodic&
+          & systems beyond the Gamma-point for CoulombMatrix settings other than 'Truncated'.")
+    end if
+
+    if ((.not. this%tRealHS) .and. this%nSpin == 2 .and. this%tForces) then
+      call error("Hybrid functionality currently does not yet support spin-polarized gradient&
+          & evaluation for periodic systems beyond the Gamma-point.")
     end if
 
     if (this%tSpinOrbit) then
@@ -6248,7 +6249,7 @@ contains
     !> Correction to energy from on-site matrix elements
     real(dp), allocatable, intent(in) :: onSiteElements(:,:,:,:)
 
-    !> K-points
+    !> The k-points
     real(dp), intent(in) :: kPoint(:,:)
 
     !> Nr. of electrons

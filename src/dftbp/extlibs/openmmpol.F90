@@ -17,7 +17,7 @@ module dftbp_extlibs_openmmpol
                                ommp_get_fixedelec_energy, ommp_get_polelec_energy, ommp_get_full_bnd_energy, &
                                ommp_get_vdw_energy, ommp_qm_helper_init_vdw_prm, ommp_qm_helper_vdw_energy,&
                                ommp_qm_helper_set_attype, ommp_qm_helper_vdw_energy, ommp_print_summary_to_file, &
-                               OMMP_SOLVER_NONE
+                               OMMP_SOLVER_NONE, OMMP_FF_AMOEBA, OMMP_FF_WANG_AL, OMMP_FF_WANG_DL
                                
 #:endif
     use dftbp_io_message, only : error, warning
@@ -36,6 +36,9 @@ module dftbp_extlibs_openmmpol
     !> debug end
     implicit none
 
+    !> TODO: import from openmmpol
+    integer, protected :: OMMP_FF_AMBER = 0
+
     type :: TOMMPInterface
 
     #:if WITH_OPENMMPOL
@@ -44,9 +47,9 @@ module dftbp_extlibs_openmmpol
     #:endif
 
         integer :: solver
-        real(dp), allocatable :: atomPotConst(:)
-        real(dp), allocatable :: atomPotPolEnergy(:)
-        real(dp), allocatable :: atomPotPolFock(:)
+        real(dp), allocatable :: sitePotentialConstant(:)
+        real(dp), allocatable :: sitePotentialPolarizationEnergy(:)
+        real(dp), allocatable :: sitePotentialPolarizationFock(:)
         real(dp) :: bondedEnergy
         real(dp) :: nonBondedEnergy
         real(dp) :: electrostaticEnergy
@@ -91,9 +94,7 @@ contains
             character(len=*), intent(in) :: atomNames(:)
             integer, intent(in) :: atomTypes(:)
             real(dp), intent(in) :: qmAtomCoords(:, :)
-            !> N of QM atoms
             integer :: nQMatoms
-            !> Dummy charge array for initialization
             real(dp), allocatable, dimension(:) :: chargesDummy
             integer, allocatable :: zVector(:) 
 
@@ -106,12 +107,12 @@ contains
             this%electrostaticEnergy = 0.0_dp
             this%bondedEnergy = 0.0_dp
             this%nonBondedEnergy = 0.0_dp
-            allocate(this%atomPotConst(nQMatoms))
-            this%atomPotConst = 0.0_dp
-            allocate(this%atomPotPolEnergy(nQMatoms))
-            this%atomPotPolEnergy = 0.0_dp
-            allocate(this%atomPotPolFock(nQMatoms))
-            this%atomPotPolFock = 0.0_dp
+            allocate(this%sitePotentialConstant(nQMatoms))
+            this%sitePotentialConstant = 0.0_dp
+            allocate(this%sitePotentialPolarizationEnergy(nQMatoms))
+            this%sitePotentialPolarizationEnergy = 0.0_dp
+            allocate(this%sitePotentialPolarizationFock(nQMatoms))
+            this%sitePotentialPolarizationFock = 0.0_dp
 
             if (openmmpolInput%inputFormat == "Tinker") then
                 call ommp_init_xyz(this%pSystem, openmmpolInput%geomFilename, openmmpolInput%mmParamsFilename)
@@ -157,9 +158,9 @@ contains
             #:if WITH_OPENMMPOL
             call ommp_terminate_qm_helper(this%pQMHelper)
             call ommp_terminate(this%pSystem)
-            deallocate(this%atomPotConst)
-            deallocate(this%atomPotPolEnergy)
-            deallocate(this%atomPotPolFock)
+            deallocate(this%sitePotentialConstant)
+            deallocate(this%sitePotentialPolarizationEnergy)
+            deallocate(this%sitePotentialPolarizationFock)
             #:else 
             call notImplementedError
             #:endif
@@ -217,45 +218,46 @@ contains
 
             !> Compute electric field produced by QM part of the system on MM atoms
             this%pQMHelper%E_n2p_done = .false. 
-
+            
             !> Only computes E_n2p (and V_m2n/V_p2n at first call)
             call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
-            
-            !> Set external field for MM, solve the polarization equations
-            this%pSystem%eel%D2Mgg_done = .false.
-            this%pSystem%eel%D2Dgg_done = .false.
 
-            call ommp_set_external_field(this%pSystem, &
-                                         this%pQMHelper%E_n2p, &
-                                         this%solver, &
-                                         OMMP_SOLVER_NONE, &
-                                         .true.)
+            if (this%pSystem%ff_type .ne. OMMP_FF_AMBER) then
+                !> Set external field for MM, solve the polarization equations
+                this%pSystem%eel%D2Mgg_done = .false.
+                this%pSystem%eel%D2Dgg_done = .false.
+                
+                call ommp_set_external_field(this%pSystem, &
+                                             this%pQMHelper%E_n2p, &
+                                             this%solver, &
+                                             OMMP_SOLVER_NONE, &
+                                             .true.)
 
-            !> Compute electostatic potential produced by MM+Pol part on QM nuclei
-            this%pQMHelper%V_p2n_done = .false. 
-            if(this%pSystem%amoeba) then
-                this%pQMHelper%V_pp2n_done = .false. 
+                !> Compute electostatic potential produced by MM+Pol part on QM nuclei
+                this%pQMHelper%V_p2n_done = .false. 
+                if(this%pSystem%amoeba) then
+                    this%pQMHelper%V_pp2n_done = .false. 
+                end if
+
+                !> Only computes V_p2n, after having updated the external field/IPDs
+                call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
+
+                this%sitePotentialPolarizationEnergy = -this%pQMHelper%V_p2n
+                !> If using AMOEBA, the potential is mean for two sets of dipoles
+                if (this%pSystem%amoeba) then
+                    this%sitePotentialPolarizationFock = -(this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5_dp
+                else
+                    this%sitePotentialPolarizationFock = -this%pQMHelper%V_p2n
+                end if
             end if
-
-            !> Only computes V_p2n, after having updated the external field/IPDs
-            call ommp_prepare_qm_ele_ene(this%pSystem, this%pQMHelper)
-
-            !> Store computed potential on QM atoms
-            this%atomPotConst = -this%pQMHelper%V_m2n
-            this%atomPotPolEnergy = -this%pQMHelper%V_p2n
-            !> If using AMOEBA, the potential is mean for two sets of dipoles
-            if(this%pSystem%amoeba) then
-                this%atomPotPolFock = -(this%pQMHelper%V_pp2n + this%pQMHelper%V_p2n) * 0.5_dp
-            else
-                this%atomPotPolFock = -this%pQMHelper%V_p2n
-            end if
             
+            this%sitePotentialConstant = -this%pQMHelper%V_m2n
+
             !> Store total QM/MM electrostatic energy
             this%electrostaticEnergy = ommp_get_polelec_energy(this%pSystem)   &
                                      + ommp_get_fixedelec_energy(this%pSystem) &
                                      + dot_product(this%pQMHelper%qqm,         &
-                                    & -(this%atomPotConst + 0.5_dp * this%atomPotPolEnergy))
-            
+                                    & -(this%sitePotentialConstant + 0.5_dp * this%sitePotentialPolarizationEnergy))
 
             #:else 
             call notImplementedError
@@ -293,7 +295,7 @@ contains
 
             #:if WITH_OPENMMPOL
             !> Add potential from openmmpol to the vector of potentials
-            shiftPerAtom = shiftPerAtom + this%atomPotConst + this%atomPotPolFock
+            shiftPerAtom = shiftPerAtom + this%sitePotentialConstant + this%sitePotentialPolarizationFock
             #:else 
             call notImplementedError
             #:endif
@@ -377,7 +379,7 @@ contains
             real(dp) :: E_pol_0
 
             !> Numerical differention step
-            real(dp), parameter :: diff_step = 1e-6_dp
+            real(dp), parameter :: diff_step = 1e-7_dp
 
             !> Iterator indices for rank 2 martrices
             integer :: i, j
@@ -455,7 +457,7 @@ contains
                 end do
             end do
 
-            !> Unpack sparse numerical Hamiltonian and correct off-diaongal values
+            !> Unpack sparse numerical Hamiltonian and correct off-diagonal values
             !> by multiplying them by 1/2
             do iSpin = 1, nSpin
                 call unpackHS(h_numeric(:, :, iSpin), h_numeric_sparse(:, iSpin), &

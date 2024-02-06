@@ -1478,12 +1478,12 @@ contains
 
           ! Matrix elemen debug for openmmpol;
           ! TODO: remove later
-          ! if (allocated(this%openmmpolCalc)) then
-          !   call this%openmmpolCalc%FockMatrixDebugTest(env, this%rhoPrim, this%ints, this%orb,&
-          !                                                        & this%species, this%q0, this%neighbourList,&
-          !                                                        & this%nNeighbourSK, this%iSparseStart,&
-          !                                                        & this%img2CentCell, this%denseDesc)
-          ! end if
+          if (allocated(this%openmmpolCalc)) then
+            call this%openmmpolCalc%FockMatrixDebugTest(env, this%rhoPrim, this%ints, this%orb,&
+                                                                 & this%species, this%q0, this%neighbourList,&
+                                                                 & this%nNeighbourSK, this%iSparseStart,&
+                                                                 & this%img2CentCell, this%denseDesc)
+          end if
 
           exit lpSCC
         end if

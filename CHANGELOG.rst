@@ -11,10 +11,12 @@ Unreleased
 Added
 -----
 
+- Generalization of mixers to also handle complex density matrices
+
 - General range-separated, long-range corrected CAM hybrid functionals for
-  ground-state periodic systems
-  (MPI-parallel Fock-type exchange and energy gradient construction by
-  neighbour-list and matrix-multiplication based algorithms)
+  ground-state periodic systems (MPI-parallel Fock-type exchange and energy
+  gradient construction by neighbour-list and matrix-multiplication based
+  algorithms)
 
 - Generalization of non-periodic, ground-state LC-DFTB Hamiltonian to general
   range-separated, long-range corrected CAM hybrid functionals
@@ -23,13 +25,10 @@ Added
   evaluation, restart of matrix-multiplication based hybrid-DFTB calculations)
 
 - Electronic constraints on arbitrary regions, targeting the electronic ground
-  state by determining a self-consistent constraint potential
-  (restricted to Mulliken populations at the moment)
+  state by determining a self-consistent constraint potential (restricted to
+  Mulliken populations at the moment)
 
-- CI optimizer to locate conical intersections
-
-Changed
--------
+- Density Matrix construction on GPU using MAGMA-BLAS routines
 
 
 Fixed
@@ -37,16 +36,28 @@ Fixed
 
 - SK-file parser extra-/spline-tag sequence dependent
 
-- Memory leak for MPI enabled code with many geometric steps.
-
-- API call to setExternalCharges was not marking calculation to be
-  re-evaluated.
-
-- Calls to setExternalCharges were failing if number of external charges
-  changes.
-
 - Incorrect excited gradients for spin-polarized long-range corrected
   linear-response TD-DFTB calculations.
+
+
+24.1 (2024-02-12)
+=================
+
+Added
+-----
+
+- CI optimizer to locate conical intersections
+
+
+Fixed
+-----
+
+- Memory leak for MPI enabled code with many geometric steps.
+
+- API call to setExternalCharges was not marking calculation to be re-evaluated.
+
+- Calls to setExternalCharges were failing if number of external charges changes.
+
 
 23.1 (2023-07-05)
 =================
@@ -60,7 +71,6 @@ Added
 
 - Born charges and derivatives can now be calculated for a subset of the desired
   atoms (similar to the Hessian).
-
 
 Changed
 -------
@@ -559,4 +569,3 @@ Fixed
   modes.
 
 - Make geometry writing in gen and xyz files consistent.
-

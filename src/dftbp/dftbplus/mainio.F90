@@ -1862,20 +1862,6 @@ contains
 #:endif
 
 
-  !> Open an output file and clear it
-  subroutine initOutputFile(fileName)
-
-    !> File name
-    character(*), intent(in) :: fileName
-
-    type(TFileDescr) :: fd
-
-    call openFile(fd, fileName, mode="w")
-    call closeFile(fd)
-
-  end subroutine initOutputFile
-
-
   !> Write tagged output of data from the code at the end of the DFTB+ run, data being then used for
   !> regression testing
   subroutine writeAutotestTag(fileName, electronicSolver, tPeriodic, cellVol, tMulliken, qOutput,&
@@ -4117,7 +4103,7 @@ contains
 
   !> Write out charges.
   subroutine writeCharges(fCharges, tWriteAscii, orb, qInput, qBlockIn, qiBlockIn, densityMatrix,&
-      & tRealHS, nAtInCentralRegion, coeffsAndShifts, multipoles)
+      & tRealHS, nAtInCentralRegion, hybridXcAlg, coeffsAndShifts, multipoles)
 
     !> File name for charges to be written to
     character(*), intent(in) :: fCharges
@@ -4147,6 +4133,9 @@ contains
     !> elsewhere)
     integer, intent(in) :: nAtInCentralRegion
 
+    !> Hybrid Hamiltonian construction algorithm
+    integer, intent(in), optional :: hybridXcAlg
+
     !> Coefficients of the lattice vectors in the linear combination for the super lattice vectors
     !! (should be integer values) and shift of the grid along the three small reciprocal lattice
     !! vectors (between 0.0 and 1.0)
@@ -4156,7 +4145,8 @@ contains
     type(TMultipole), intent(in), optional :: multipoles
 
     call writeQToFile(qInput, fCharges, tWriteAscii, orb, qBlockIn, qiBlockIn, densityMatrix,&
-        & tRealHS, nAtInCentralRegion, coeffsAndShifts=coeffsAndShifts, multipoles=multipoles)
+        & tRealHS, nAtInCentralRegion, hybridXcAlg, coeffsAndShifts=coeffsAndShifts,&
+        & multipoles=multipoles)
     if (tWriteAscii) then
       write(stdOut, "(A,A)") '>> Charges saved for restart in ', trim(fCharges) // '.dat'
     else

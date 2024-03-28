@@ -300,6 +300,10 @@ module dftbp_dftbplus_inputdata
     !> Electronic/eigenvalue solver options
     type(TElectronicSolverInp) :: solver
 
+    !> If using the GPU as
+    logical :: isDmOnGpu = .false.
+
+    !> Choice of SCC mixer
     integer :: iMixSwitch = 0
 
     !> Maximum number of self-consitent iterations
@@ -336,6 +340,8 @@ module dftbp_dftbplus_inputdata
 
     !> Whether to initialize internal state of the Nose-Hoover thermostat from input
     logical :: tInitNHC = .false.
+
+    !> Internal state variables for the Nose-Hoover chain thermostat
     real(dp), allocatable :: xnose(:)
     real(dp), allocatable :: vnose(:)
     real(dp), allocatable :: gnose(:)

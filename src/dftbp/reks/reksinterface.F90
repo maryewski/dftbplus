@@ -22,6 +22,7 @@ module dftbp_reks_reksinterface
   use dftbp_common_file, only : TFileDescr, openFile, closeFile
   use dftbp_common_globalenv, only : stdOut
   use dftbp_common_status, only : TStatus
+  use dftbp_dftb_densitymatrix, only : TDensityMatrix
   use dftbp_dftb_dispiface, only : TDispersionIface
   use dftbp_dftb_nonscc, only : TNonSccDiff
   use dftbp_dftb_periodic, only : TNeighbourList, TSymNeighbourList
@@ -30,11 +31,12 @@ module dftbp_reks_reksinterface
   use dftbp_dftb_repulsive_repulsive, only : TRepulsive
   use dftbp_dftb_scc, only : TScc
   use dftbp_dftb_slakocont, only : TSlakoCont
-  use dftbp_dftb_sparse2dense, only : packHS, unpackHS, blockSymmetrizeHS
+  use dftbp_dftb_sparse2dense, only : packHS, unpackHS
   use dftbp_dftb_stress, only : getBlockStress
   use dftbp_elecsolvers_elecsolvers, only : TElectronicSolver
   use dftbp_io_taggedoutput, only : TTaggedWriter, tagLabels
   use dftbp_io_message, only : error
+  use dftbp_math_matrixops, only : adjointLowerTriangle
   use dftbp_reks_rekscommon, only : getTwoIndices
   use dftbp_reks_rekscpeqn, only : cggrad
   use dftbp_reks_reksen, only : adjustEigenval, solveSecularEqn
@@ -134,7 +136,7 @@ module dftbp_reks_reksinterface
   !> get the energy-related properties; unrelaxed density matrix,
   !> dipole integral, transition dipole, oscillator strength
   subroutine getReksEnProperties(env, denseDesc, neighbourList, nNeighbourSK,&
-      & img2CentCell, iSparseStart, eigenvecs, coord0, this)
+      & img2CentCell, iSparseStart, eigenvecs, coord0, this, densityMatrix, errStatus)
 
     !> Environment settings
     type(TEnvironment), intent(inout) :: env
@@ -162,6 +164,12 @@ module dftbp_reks_reksinterface
 
     !> data type for REKS
     type(TReksCalc), intent(inout) :: this
+
+    !> Holds density matrix settings and pointers
+    type(TDensityMatrix), intent(inout) :: densityMatrix
+
+    !> Status of operation
+    type(TStatus), intent(out) :: errStatus
 
     real(dp), allocatable :: rhoL(:,:)
     real(dp), allocatable :: dipoleInt(:,:,:)
@@ -203,7 +211,7 @@ module dftbp_reks_reksinterface
             call unpackHS(rhoL, this%rhoSpL(:,1,tmpL), neighbourList%iNeighbour, &
                 & nNeighbourSK, denseDesc%iAtomStart, iSparseStart, img2CentCell)
             call env%globalTimer%stopTimer(globalTimers%sparseToDense)
-            call blockSymmetrizeHS(rhoL, denseDesc%iAtomStart)
+            call adjointLowerTriangle(rhoL)
           end if
 
         end if
@@ -212,7 +220,8 @@ module dftbp_reks_reksinterface
       call getUnrelaxedDensMatAndTdp(eigenvecs(:,:,1), this%overSqr, rhoL, &
           & this%FONs, this%eigvecsSSR, this%Lpaired, this%Nc, this%Na, &
           & this%rstate, this%Lstate, this%reksAlg, this%tSSR, this%tTDP, &
-          & this%unrelRhoSqr, this%unrelTdm)
+          & this%unrelRhoSqr, this%unrelTdm, densityMatrix, errStatus)
+      @:PROPAGATE_ERROR(errStatus)
 
       if (this%tTDP) then
         call getDipoleIntegral(coord0, this%overSqr, this%getAtomIndex, dipoleInt)
@@ -933,8 +942,8 @@ module dftbp_reks_reksinterface
       #:else
         call hybridXc%addCamGradients_real(this%deltaRhoSqrL(:,:,:,iL), this%overSqr,&
             & skOverCont, orb, denseDesc%iAtomStart, neighbourList%iNeighbour, nNeighbourSK,&
-            & nonSccDeriv, img2CentCell, species, coord, .false., lcDerivs(:,:,iL), errStatus,&
-            & symNeighbourList=symNeighbourList, nNeighbourCamSym=nNeighbourCamSym)
+            & nonSccDeriv, .false., lcDerivs(:,:,iL), symNeighbourList=symNeighbourList,&
+            & nNeighbourCamSym=nNeighbourCamSym)
         @:PROPAGATE_ERROR(errStatus)
       #:endif
       end if

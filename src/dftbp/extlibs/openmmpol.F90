@@ -27,12 +27,12 @@ module dftbp_extlibs_openmmpol
     use dftbp_dftb_charges, only : getSummedCharges
     use dftbp_common_accuracy, only : dp, mc
     !> debug
-    use dftbp_type_integral, only : TIntegral
-    use dftbp_dftb_sparse2dense, only : unpackHS, blockSymmetrizeHS, symmetrizeHS
-    use dftbp_type_multipole, only : TMultipole
-    use dftbp_dftb_populations, only : mulliken
-    use dftbp_dftb_shift, only : addShift
-    use dftbp_type_densedescr, only : TDenseDescr
+    ! use dftbp_type_integral, only : TIntegral
+    ! use dftbp_dftb_sparse2dense, only : unpackHS
+    ! use dftbp_type_multipole, only : TMultipole
+    ! use dftbp_dftb_populations, only : mulliken
+    ! use dftbp_dftb_shift, only : addShift
+    ! use dftbp_type_densedescr, only : TDenseDescr
     !> debug end
     implicit none
 
@@ -58,7 +58,7 @@ module dftbp_extlibs_openmmpol
         procedure :: updateQMCharges
         procedure :: addPotential
         procedure :: writeOutput
-        procedure :: FockMatrixDebugTest
+        ! procedure :: FockMatrixDebugTest
     end type
 
 type :: TOMMPInput
@@ -314,196 +314,196 @@ contains
 
         end subroutine
 
-        subroutine FockMatrixDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
-                                                  & iSparseStart, img2CentCell, denseDesc)
-            class(TOMMPInterface) :: this
+        ! subroutine FockMatrixDebugTest(this, env, rhoPrim, ints, orb, species, q0, neighbourList, nNeighbourSK,&
+        !                                           & iSparseStart, img2CentCell, denseDesc)
+        !     class(TOMMPInterface) :: this
 
-            ! ARGUMENTS:
-            !> Computational environment
-            type(TEnvironment), intent(in) :: env
+        !     ! ARGUMENTS:
+        !     !> Computational environment
+        !     type(TEnvironment), intent(in) :: env
 
-            !> Non-symmetrized density matrix in sparse form
-            real(dp), intent(in) :: rhoPrim(:, :)
+        !     !> Non-symmetrized density matrix in sparse form
+        !     real(dp), intent(in) :: rhoPrim(:, :)
 
-            !> Integral container
-            type(TIntegral), intent(in) :: ints
+        !     !> Integral container
+        !     type(TIntegral), intent(in) :: ints
 
-            !> Atomic orbital information
-            type(TOrbitals), intent(in) :: orb
+        !     !> Atomic orbital information
+        !     type(TOrbitals), intent(in) :: orb
 
-            !> Reference atomic populations
-            real(dp), intent(in) :: q0(:, :, :)
+        !     !> Reference atomic populations
+        !     real(dp), intent(in) :: q0(:, :, :)
 
-            !> Species for all atoms
-            integer, intent(in) :: species(:)
+        !     !> Species for all atoms
+        !     integer, intent(in) :: species(:)
         
-            !> Atomic neighbours
-            type(TNeighbourList), intent(in) :: neighbourList
+        !     !> Atomic neighbours
+        !     type(TNeighbourList), intent(in) :: neighbourList
 
-            !> Misc
-            integer, intent(in) :: nNeighbourSK(:)
-            integer, intent(in) :: iSparseStart(:, :)
-            integer, intent(in) :: img2CentCell(:)
-            type(TDenseDescr), intent(in) :: denseDesc
+        !     !> Misc
+        !     integer, intent(in) :: nNeighbourSK(:)
+        !     integer, intent(in) :: iSparseStart(:, :)
+        !     integer, intent(in) :: img2CentCell(:)
+        !     type(TDenseDescr), intent(in) :: denseDesc
 
-            ! INTERNAL VARIABLES:
+        !     ! INTERNAL VARIABLES:
 
-            !> Perturbed density matrix
-            real(dp), allocatable :: dm_perturbed(:, :)
+        !     !> Perturbed density matrix
+        !     real(dp), allocatable :: dm_perturbed(:, :)
 
-            !> Analytical hamiltonian contributions (dense)
-            real(dp), allocatable :: h_exact(:, :, :)
+        !     !> Analytical hamiltonian contributions (dense)
+        !     real(dp), allocatable :: h_exact(:, :, :)
 
-            !> Analytical hamiltonian contributions (sparse)
-            real(dp), allocatable :: h_exact_sparse(:, :)
+        !     !> Analytical hamiltonian contributions (sparse)
+        !     real(dp), allocatable :: h_exact_sparse(:, :)
 
-            !> Numerical hamiltonian contributions (dense)
-            real(dp), allocatable :: h_numeric(:, :, :)
+        !     !> Numerical hamiltonian contributions (dense)
+        !     real(dp), allocatable :: h_numeric(:, :, :)
 
-            !> Numeric hamiltonian contributions (sparse)
-            real(dp), allocatable :: h_numeric_sparse(:, :)
+        !     !> Numeric hamiltonian contributions (sparse)
+        !     real(dp), allocatable :: h_numeric_sparse(:, :)
 
-            !> Perturbed orbital charges (work)
-            real(dp), allocatable :: qOrbPerturbed(:, :, :)
+        !     !> Perturbed orbital charges (work)
+        !     real(dp), allocatable :: qOrbPerturbed(:, :, :)
 
-            !> Unperturbed orbital (work)
-            real(dp), allocatable :: qOrb0(:, :, :)
+        !     !> Unperturbed orbital (work)
+        !     real(dp), allocatable :: qOrb0(:, :, :)
 
-            !> Potential for exact matrix element evaluation
-            real(dp), allocatable :: potential(:, :)
+        !     !> Potential for exact matrix element evaluation
+        !     real(dp), allocatable :: potential(:, :)
 
-            !> Perturbed polarization energy (work)
-            real(dp) :: E_pol_perturbed
+        !     !> Perturbed polarization energy (work)
+        !     real(dp) :: E_pol_perturbed
 
-            !> Polarization energy on the unperturbed density matrix
-            real(dp) :: E_pol_0
+        !     !> Polarization energy on the unperturbed density matrix
+        !     real(dp) :: E_pol_0
 
-            !> Numerical differention step
-            real(dp), parameter :: diff_step = 1e-7_dp
+        !     !> Numerical differention step
+        !     real(dp), parameter :: diff_step = 1e-7_dp
 
-            !> Iterator indices for rank 2 martrices
-            integer :: i, j
+        !     !> Iterator indices for rank 2 martrices
+        !     integer :: i, j
 
-            !> Number of spins in the system
-            integer :: nSpin
+        !     !> Number of spins in the system
+        !     integer :: nSpin
 
-            !> Iterator index for spins
-            integer :: iSpin
+        !     !> Iterator index for spins
+        !     integer :: iSpin
 
-            !> Number of atoms in the system
-            integer :: nAtoms
+        !     !> Number of atoms in the system
+        !     integer :: nAtoms
 
-            nSpin = size(rhoPrim, dim=2)
-            nAtoms = size(species)
+        !     nSpin = size(rhoPrim, dim=2)
+        !     nAtoms = size(species)
 
-            !> Allocate and initialize other matrices
-            allocate(dm_perturbed, mold=rhoPrim)
-            dm_perturbed = 0.0_dp
-            allocate(h_exact(denseDesc%fullSize, denseDesc%fullSize, nSpin))
-            allocate(h_exact_sparse, mold=rhoPrim)
-            allocate(h_numeric, mold=h_exact)
-            allocate(h_numeric_sparse, mold=rhoPrim)
-            h_exact = 0.0_dp
-            h_numeric = 0.0_dp
-            h_numeric_sparse = 0.0_dp
-            h_exact_sparse = 0.0_dp
-            allocate(potential(nAtoms, nSpin))
-            potential = 0.0_dp
+        !     !> Allocate and initialize other matrices
+        !     allocate(dm_perturbed, mold=rhoPrim)
+        !     dm_perturbed = 0.0_dp
+        !     allocate(h_exact(denseDesc%fullSize, denseDesc%fullSize, nSpin))
+        !     allocate(h_exact_sparse, mold=rhoPrim)
+        !     allocate(h_numeric, mold=h_exact)
+        !     allocate(h_numeric_sparse, mold=rhoPrim)
+        !     h_exact = 0.0_dp
+        !     h_numeric = 0.0_dp
+        !     h_numeric_sparse = 0.0_dp
+        !     h_exact_sparse = 0.0_dp
+        !     allocate(potential(nAtoms, nSpin))
+        !     potential = 0.0_dp
 
-            !> Allocate and initialize charges and potentials
-            allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), nSpin))
-            allocate(qOrb0, mold=qOrbPerturbed)
-            qOrb0 = 0.0_dp
-            qOrbPerturbed = 0.0_dp
+        !     !> Allocate and initialize charges and potentials
+        !     allocate(qOrbPerturbed(orb%mOrb, size(orb%nOrbAtom), nSpin))
+        !     allocate(qOrb0, mold=qOrbPerturbed)
+        !     qOrb0 = 0.0_dp
+        !     qOrbPerturbed = 0.0_dp
 
-            !> Compute the unperturbed population from density matrix
-            do iSpin = 1, nSpin
-                call mulliken(env, qOrb0(:, :, iSpin), ints%overlap, rhoPrim(:, iSpin), &
-                            & orb, neighbourList%iNeighbour, nNeighbourSK,&
-                            & img2CentCell, iSparseStart)
-            end do
+        !     !> Compute the unperturbed population from density matrix
+        !     do iSpin = 1, nSpin
+        !         call mulliken(env, qOrb0(:, :, iSpin), ints%overlap, rhoPrim(:, iSpin), &
+        !                     & orb, neighbourList%iNeighbour, nNeighbourSK,&
+        !                     & img2CentCell, iSparseStart)
+        !     end do
 
-            !> Compute QM/MM coupling energy at unpertubed density matrix
-            E_pol_0 = this%electrostaticEnergy
+        !     !> Compute QM/MM coupling energy at unpertubed density matrix
+        !     E_pol_0 = this%electrostaticEnergy
 
-            !> Get analytical potential
-            call this%addPotential(potential(:, 1), qOrb0, q0, env, species,&
-                                           & neighbourList, img2CentCell, orb)
+        !     !> Get analytical potential
+        !     call this%addPotential(potential(:, 1), qOrb0, q0, env, species,&
+        !                                    & neighbourList, img2CentCell, orb)
 
-            !> Compute analytic Fock matrix element
-            call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
-                              & species, orb, iSparseStart, nAtoms, img2CentCell, potential, .true.)
+        !     !> Compute analytic Fock matrix element
+        !     call addShift(env, h_exact_sparse, ints%overlap, neighbourList%nNeighbour, neighbourList%iNeighbour,&
+        !                       & species, orb, iSparseStart, nAtoms, img2CentCell, potential, .true.)
 
-            !> Build and symmetrize analytic Fock matrix in dense form
-            do iSpin = 1, nSpin
-                call unpackHS(h_exact(:, :, iSpin), h_exact_sparse(:, iSpin), neighbourList%iNeighbour,&
-                            & nNeighbourSK, denseDesc%iAtomStart, iSparseStart, img2CentCell)
-                call blockSymmetrizeHS(h_exact(:, :, iSpin), denseDesc%iAtomStart)
-            end do
+        !     !> Build and symmetrize analytic Fock matrix in dense form
+        !     do iSpin = 1, nSpin
+        !         call unpackHS(h_exact(:, :, iSpin), h_exact_sparse(:, iSpin), neighbourList%iNeighbour,&
+        !                     & nNeighbourSK, denseDesc%iAtomStart, iSparseStart, img2CentCell)
+        !         call blockSymmetrizeHS(h_exact(:, :, iSpin), denseDesc%iAtomStart)
+        !     end do
 
-            !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
-            do iSpin = 1, nSpin
-                do i = 1, size(dm_perturbed, dim=1)
-                    qOrbPerturbed = 0.0_dp
-                    dm_perturbed = rhoPrim
-                    dm_perturbed(i, iSpin) = dm_perturbed(i, iSpin) + diff_step
-                    call mulliken(env, qOrbPerturbed(:, :, iSpin), ints%overlap, dm_perturbed(:, iSpin), &
-                                & orb, neighbourList%iNeighbour, nNeighbourSK, img2CentCell, &
-                                & iSparseStart)
-                    call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0,&
-                                            & img2CentCell, orb)
-                    E_pol_perturbed = this%electrostaticEnergy
-                    h_numeric_sparse(i, iSpin) = (E_pol_perturbed - E_pol_0) / diff_step
-                end do
-            end do
+        !     !> Compute Fock matrix QM/MM terms by numeric differentiation in a loop
+        !     do iSpin = 1, nSpin
+        !         do i = 1, size(dm_perturbed, dim=1)
+        !             qOrbPerturbed = 0.0_dp
+        !             dm_perturbed = rhoPrim
+        !             dm_perturbed(i, iSpin) = dm_perturbed(i, iSpin) + diff_step
+        !             call mulliken(env, qOrbPerturbed(:, :, iSpin), ints%overlap, dm_perturbed(:, iSpin), &
+        !                         & orb, neighbourList%iNeighbour, nNeighbourSK, img2CentCell, &
+        !                         & iSparseStart)
+        !             call this%updateQMCharges(env, species, neighbourList, qOrbPerturbed, q0,&
+        !                                     & img2CentCell, orb)
+        !             E_pol_perturbed = this%electrostaticEnergy
+        !             h_numeric_sparse(i, iSpin) = (E_pol_perturbed - E_pol_0) / diff_step
+        !         end do
+        !     end do
 
-            !> Unpack sparse numerical Hamiltonian and correct off-diagonal values
-            !> by multiplying them by 1/2
-            do iSpin = 1, nSpin
-                call unpackHS(h_numeric(:, :, iSpin), h_numeric_sparse(:, iSpin), &
-                            & neighbourList%iNeighbour, nNeighbourSK, &
-                            & denseDesc%iAtomStart, iSparseStart, img2CentCell)
-                call blockSymmetrizeHS(h_numeric(:, :, iSpin), denseDesc%iAtomStart)
-                do j = 1, denseDesc%fullSize
-                    do i = 1, denseDesc%fullSize
-                        if (i /= j) then
-                            h_numeric(i, j, iSpin) = h_numeric(i, j, iSpin) * 0.5_dp
-                        end if
-                    end do
-                end do
-            end do
+        !     !> Unpack sparse numerical Hamiltonian and correct off-diagonal values
+        !     !> by multiplying them by 1/2
+        !     do iSpin = 1, nSpin
+        !         call unpackHS(h_numeric(:, :, iSpin), h_numeric_sparse(:, iSpin), &
+        !                     & neighbourList%iNeighbour, nNeighbourSK, &
+        !                     & denseDesc%iAtomStart, iSparseStart, img2CentCell)
+        !         call blockSymmetrizeHS(h_numeric(:, :, iSpin), denseDesc%iAtomStart)
+        !         do j = 1, denseDesc%fullSize
+        !             do i = 1, denseDesc%fullSize
+        !                 if (i /= j) then
+        !                     h_numeric(i, j, iSpin) = h_numeric(i, j, iSpin) * 0.5_dp
+        !                 end if
+        !             end do
+        !         end do
+        !     end do
 
-            !> Set charges back to initial
-            call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
+        !     !> Set charges back to initial
+        !     call this%updateQMCharges(env, species, neighbourList, qOrb0, q0, img2CentCell, orb)
 
-            !> Write analytical dense Fock matrix (spin channel 1)
-            call write_array_newfile(h_exact(:, :, 1), "qmmm_fock_analytic.txt")
+        !     !> Write analytical dense Fock matrix (spin channel 1)
+        !     call write_array_newfile(h_exact(:, :, 1), "qmmm_fock_analytic.txt")
 
-            !> Write numerical dense Fock matrix (spin channel 1)
-            call write_array_newfile(h_numeric(:, :, 1), "qmmm_fock_numeric.txt")
+        !     !> Write numerical dense Fock matrix (spin channel 1)
+        !     call write_array_newfile(h_numeric(:, :, 1), "qmmm_fock_numeric.txt")
 
-            !> Write difference matrix
-            call write_array_newfile(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)), "qmmm_fock_difference.txt")
+        !     !> Write difference matrix
+        !     call write_array_newfile(abs(h_exact(:, :, 1) - h_numeric(:, :, 1)), "qmmm_fock_difference.txt")
             
-            !> Set small matrix elements to zero
-            ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
+        !     !> Set small matrix elements to zero
+        !     ! h_numeric = h_numeric * merge(1.0_dp, 0.0_dp, abs(h_numeric) >= 1e-10)
 
-            !> Deallocate all temporary arrays
-            deallocate(dm_perturbed)
-            deallocate(h_exact)
-            deallocate(h_exact_sparse)
-            deallocate(h_numeric)
-            deallocate(h_numeric_sparse)
-            deallocate(qOrb0)
-            deallocate(qOrbPerturbed)
-            deallocate(potential)
+        !     !> Deallocate all temporary arrays
+        !     deallocate(dm_perturbed)
+        !     deallocate(h_exact)
+        !     deallocate(h_exact_sparse)
+        !     deallocate(h_numeric)
+        !     deallocate(h_numeric_sparse)
+        !     deallocate(qOrb0)
+        !     deallocate(qOrbPerturbed)
+        !     deallocate(potential)
             
-            #:if WITH_OPENMMPOL
-            #:else 
-            call notImplementedError
-            #:endif
+        !     #:if WITH_OPENMMPOL
+        !     #:else 
+        !     call notImplementedError
+        !     #:endif
 
-        end subroutine
+        ! end subroutine
 
         subroutine notImplementedError
             call error("DFTB+ compiled without support for openmmpol library")

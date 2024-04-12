@@ -2135,7 +2135,8 @@ contains
 
     ! requires stress to already be possible and it being a periodic calculation
     ! with forces
-    this%tStress = (this%tPeriodic .and. this%tForces .and. .not.this%tNegf .and. this%tStress)
+    this%tStress = (this%tPeriodic .and. this%tForces .and. .not.this%tNegf .and. this%tStress&
+        & .and. .not. this%isHybridXc)
 
     this%nMovedAtom = input%ctrl%nrMoved
     this%nMovedCoord = 3 * this%nMovedAtom
@@ -4340,7 +4341,7 @@ contains
 
     if (.not. this%tSccCalc) return
 
-    if (this%isHybridXc .and. this%tReadChrg) then
+    if (this%isHybridXc .and. this%tReadChrg .and. this%tPeriodic) then
       allocate(this%supercellFoldingMatrix(3, 4))
     end if
 
@@ -5866,9 +5867,9 @@ contains
     end if
 
     if ((.not. this%tRealHS) .and. this%tForces&
-        & .and. (hybridXcInp%hybridXcAlg /= hybridXcAlgo%neighbourBased)) then
+        & .and. (hybridXcInp%hybridXcAlg == hybridXcAlgo%thresholdBased)) then
       call error("Hybrid functionals don't yet support gradient calculations for periodic systems&
-          & beyond the Gamma point for HFX construction algorithms other than 'NeighbourBased'.")
+          & beyond the Gamma point using the thresholded HFX construction algorithm.")
     end if
 
     if (this%tPeriodic .and. this%tRealHS&

@@ -3788,7 +3788,7 @@ contains
       energy%eDisp = 0.0_dp
     end if
     if (allocated(hybridXc)) then
-      call hybridXc%addCamEnergy_real(env, energy%Efock)
+      call hybridXc%addHybridEnergy_real(env, energy%Efock)
     else
       energy%Efock = 0.0_dp
     end if

@@ -116,11 +116,6 @@ if(WITH_PLUMED)
   list(APPEND PKG_CONFIG_REQUIRES plumed)
 endif()
 
-if(WITH_OPENMMPOL)
-  find_package(CustomOpenmmpol REQUIRED)
-  list(APPEND PKG_CONFIG_REQUIRES openmmpol)
-endif()
-
 find_package(CustomBlas REQUIRED)
 find_package(CustomLapack REQUIRED)
 list(APPEND PKG_CONFIG_LIBS_PRIVATE ${BLAS_LIBRARY} ${LAPACK_LIBRARY})
@@ -295,6 +290,16 @@ if(WITH_CHIMES)
   dftbp_config_hybrid_dependency(ChimesCalc ChimesCalc::ChimesCalc_Fortran
     "${HYBRID_CONFIG_METHODS}" "QUIET"
   external/chimes "${exclude}" "${CHIMES_GIT_REPOSITORY}" "${CHIMES_GIT_TAG}")
+endif()
+
+if(WITH_OPENMMPOL)
+  # find_package(CustomOpenmmpol REQUIRED)
+  # list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+  # TODO: add hybrid dependency support
+  set(OPENMMPOL_GIT_REPOSITORY "https://github.com/Molecolab-Pisa/OpenMMPol.git")
+  set(OPENMMPOL_GIT_TAG "efccfd6d6903978e67ada04c31fc0cb0d8911ebb") # do not change manually!
+  dftbp_config_hybrid_dependency(openmmpol openmmpol::openmmpol "${HYBRID_CONFIG_METHODS}" "QUIET"
+  external/openmmpol "${exclude}" "${OPENMMPOL_GIT_REPOSITORY}" "${OPENMMPOL_GIT_TAG}")
 endif()
 
 # FyTest currently can only be integrated as a submodule

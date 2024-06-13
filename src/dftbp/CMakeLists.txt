@@ -132,7 +132,7 @@ if(WITH_CHIMES)
 endif()
 
 if(WITH_OPENMMPOL)
-  target_link_libraries(dftbplus PRIVATE Openmmpol::Openmmpol)
+  target_link_libraries(dftbplus PRIVATE openmmpol::openmmpol)
 endif()
 
 if(WITH_MPI)

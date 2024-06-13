@@ -1,0 +1,11 @@
+MANIFEST.in
+README.rst
+pyproject.toml
+setup.cfg
+src/__init__.py
+src/dftbplus.py
+src/pythonapi.egg-info/PKG-INFO
+src/pythonapi.egg-info/SOURCES.txt
+src/pythonapi.egg-info/dependency_links.txt
+src/pythonapi.egg-info/requires.txt
+src/pythonapi.egg-info/top_level.txt

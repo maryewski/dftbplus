@@ -162,7 +162,7 @@ set(HYBRID_CONFIG_METHODS "Submodule;Find;Fetch" CACHE STRING
 #     process. If the source is not present, try to retrieve it via the 'git submodule' command
 #     (provided the source tree is a git repository and git is available)
 #
-# Find: Find the dependency as an already installed package in the system.
+# Find: Find the dependency as an already installed package in the system.option(WITH_OPENMMPOL "Whether DFTB+ should be built with polarizable QM/MM support through openmmpol" TRUE)
 #
 # Fetch: Fetch the source into the build folder and build the dependency as part of the build
 #     process (works also in cases where the source tree is not a Git repository)

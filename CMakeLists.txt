@@ -293,8 +293,7 @@ if(WITH_CHIMES)
 endif()
 
 if(WITH_OPENMMPOL)
-  find_package(CustomOpenmmpol REQUIRED)
-  list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+  find_package(openmmpol REQUIRED)
 endif()
 
 # FyTest currently can only be integrated as a submodule

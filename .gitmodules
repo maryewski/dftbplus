@@ -37,6 +37,3 @@
 [submodule "external/chimes/origin"]
 	path = external/chimes/origin
 	url = https://github.com/rk-lindsey/chimes_calculator.git
-[submodule "external/openmmpol/origin"]
-	path = external/openmmpol/origin
-	url = https://github.com/Molecolab-Pisa/OpenMMPol.git

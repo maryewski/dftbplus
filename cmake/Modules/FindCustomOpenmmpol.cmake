@@ -57,9 +57,6 @@ The following cache variables may be set to influence the library detection:
 include(FindPackageHandleStandardArgs)
 include(CustomLibraryFinder)
 
-# #DEBUG
-# include(CMakePrintHelpers)
-
 if(TARGET Openmmpol::Openmmpol)
 
   set(CUSTOMOPENMMPOL_FOUND True)

@@ -293,13 +293,8 @@ if(WITH_CHIMES)
 endif()
 
 if(WITH_OPENMMPOL)
-  # find_package(CustomOpenmmpol REQUIRED)
-  # list(APPEND PKG_CONFIG_REQUIRES openmmpol)
-  # TODO: add hybrid dependency support
-  set(OPENMMPOL_GIT_REPOSITORY "https://github.com/Molecolab-Pisa/OpenMMPol.git")
-  set(OPENMMPOL_GIT_TAG "efccfd6d6903978e67ada04c31fc0cb0d8911ebb") # do not change manually!
-  dftbp_config_hybrid_dependency(openmmpol openmmpol::openmmpol "${HYBRID_CONFIG_METHODS}" "QUIET"
-  external/openmmpol "${exclude}" "${OPENMMPOL_GIT_REPOSITORY}" "${OPENMMPOL_GIT_TAG}")
+  find_package(CustomOpenmmpol REQUIRED)
+  list(APPEND PKG_CONFIG_REQUIRES openmmpol)
 endif()
 
 # FyTest currently can only be integrated as a submodule

@@ -9,9 +9,11 @@ external/gbsa/status
 external/slakos/origin
 external/slakos/status
 build
+debug*
 custom.cmake
 __pycache__
 .idea
+.vscode
 tools/dptools/build
 .nfs*
 _build*

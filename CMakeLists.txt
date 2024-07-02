@@ -233,7 +233,7 @@ endif()
 
 if(WITH_OPENMMPOL)
   # find_package(openmmpol REQUIRED)
-  # list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+  # list(APPEND PKG_CONFIG_REQUIRES openmmpol)              
   find_package(openmmpol REQUIRED)
   list(APPEND PKG_CONFIG_REQUIRES openmmpol)
 endif()

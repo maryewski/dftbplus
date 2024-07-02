@@ -100,6 +100,10 @@ if(WITH_POISSON)
   target_link_libraries(dftbplus PUBLIC mudpack)
 endif()
 
+if(WITH_OPENMMPOL)
+  target_link_libraries(dftbplus PUBLIC openmmpol::openmmpol)
+endif()
+
 if(WITH_SDFTD3)
   target_link_libraries(dftbplus PUBLIC s-dftd3::s-dftd3)
 endif()

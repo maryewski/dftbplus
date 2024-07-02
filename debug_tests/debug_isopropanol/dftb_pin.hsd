@@ -1,0 +1,113 @@
+Geometry = xyzFormat {
+12
+Isopropanol
+H       2.018600000000000      2.782500000000000      0.798500000000000
+C       1.420100000000000      2.749800000000000     -0.121000000000000
+H       1.678300000000000      3.638900000000000     -0.711400000000000
+H       1.734500000000000      1.867500000000000     -0.692700000000000
+C      -0.072600000000000      2.685500000000000      0.183300000000000
+H      -0.292600000000000      1.768300000000000      0.783800000000000
+O      -0.375800000000000      3.819500000000000      0.977400000000000
+H      -1.315900000000000      3.823600000000000      1.097200000000000
+C      -0.890100000000000      2.656500000000000     -1.107100000000000
+H      -0.727800000000000      3.557800000000000     -1.713100000000000
+H      -0.612600000000000      1.791200000000000     -1.722000000000000
+H      -1.967300000000000      2.585000000000000     -0.906200000000000
+}
+Hamiltonian = DFTB {
+  Scc = Yes
+  SlaterKosterFiles = Type2FileNames {
+    Prefix = "/home/maryewski/Downloads/sk-files/3ob/3ob-3-1/"
+    Separator = "-"
+    Suffix = ".skf"
+    LowerCaseTypeName = No
+  }
+  MaxAngularMomentum = {
+    C = "p"
+    O = "p"
+    H = "s"
+  }
+  Openmmpol = Input {
+    Format = 'Tinker'
+    GeometryFilename = "./input.xyz"
+    ParametersFilename = "./amoeba09.prm"
+    Solver = 3
+    vdWParameters = {
+      ParametersFilename = "./amoeba09.prm"
+      AtomTypes = {
+60 59 60 60 57 58 55 56 59 60 60 60
+      }
+    }
+  }
+  PolynomialRepulsive = {}
+  ShellResolvedSCC = No
+  OldSKInterpolation = No
+  Hybrid = None {}
+  ReadInitialCharges = No
+  InitialCharges = {}
+  SCCTolerance = 1.0000000000000001E-005
+  ConvergentSCCOnly = Yes
+  HCorrection = None {}
+  SpinPolarisation = {}
+  ElectricField = {}
+  Solver = RelativelyRobust {}
+  Charge = 0.0000000000000000
+  MaxSCCIterations = 100
+  OnSiteCorrection = {}
+  Dispersion = {}
+  Solvation = {}
+  ElectronicConstraints = {}
+  Electrostatics = GammaFunctional {}
+  ThirdOrder = No
+  ThirdOrderFull = No
+  Differentiation = FiniteDiff {
+    Delta = 1.2207031250000000E-004
+  }
+  ForceEvaluation = "Traditional"
+  Mixer = Broyden {
+    MixingParameter = 0.20000000000000001
+    InverseJacobiWeight = 1.0000000000000000E-002
+    MinimalWeight = 1.0000000000000000
+    MaximalWeight = 100000.00000000000
+    WeightFactor = 1.0000000000000000E-002
+  }
+  Filling = Fermi {
+    Temperature = 0.0000000000000000
+  }
+}
+Options = {
+  WriteDetailedOut = Yes
+  WriteAutotestTag = No
+  WriteDetailedXML = No
+  WriteResultsTag = No
+  RestartFrequency = 20
+  RandomSeed = 0
+  WriteHS = No
+  WriteRealHS = No
+  MinimiseMemoryUsage = No
+  ShowFoldedCoords = No
+  TimingVerbosity = 1
+  WriteCharges = Yes
+  WriteChargesAsText = No
+  BinaryAccessTypes = {
+ "stream"
+  }
+}
+ParserOptions = {
+  ParserVersion = 14
+  WriteHSDInput = Yes
+  StopAfterParsing = No
+  IgnoreUnprocessedNodes = No
+}
+Reks = None {}
+Driver = {}
+Analysis = {
+  ProjectStates = {}
+  WriteEigenvectors = No
+  WriteBandOut = Yes
+  MullikenAnalysis = Yes
+  WriteNetCharges = No
+  AtomResolvedEnergies = No
+  PrintForces = No
+}
+ExcitedState = {}

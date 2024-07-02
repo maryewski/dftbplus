@@ -56,6 +56,8 @@ contributed to DFTB+ :
 
 * Reinhard Maurer (University of Warwick, UK)
 
+* Alexander Maryewski (Karlsruhe Institute of Technology, Germany)
+
 * Tobias Melson (Max Planck Computing and Data Facility, Germany)
 
 * Izaac Mitchell (University of Newcastle, Australia)

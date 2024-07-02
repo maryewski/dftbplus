@@ -231,6 +231,13 @@ if(WITH_POISSON)
     add_subdirectory(external/mudpack)
 endif()
 
+if(WITH_OPENMMPOL)
+  # find_package(openmmpol REQUIRED)
+  # list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+  find_package(openmmpol REQUIRED)
+  list(APPEND PKG_CONFIG_REQUIRES openmmpol)
+endif()
+
 if(WITH_TBLITE OR WITH_SDFTD3)
   set(MCTC_LIB_GIT_REPOSITORY "https://github.com/grimme-lab/mctc-lib.git")
   set(MCTC_LIB_GIT_TAG "87a46cdf5281ad75909083c4f72354d54abdf95d")  # do not change manually!

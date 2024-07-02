@@ -1,0 +1,43 @@
+{
+    "cmake.configureOnOpen": false,
+    "files.watcherExclude": {
+        "**/_build/**": true
+    },
+    "search.exclude": {
+        "**/_build/**": true
+    },
+    "fortran.fortls.excludeDirectories": [
+        "**/_build/**"
+    ],
+    "C_Cpp.files.exclude": {
+        "**/_build/**": true,
+        "**/.vscode": true,
+        "**/.vs": true
+    },
+    "C_Cpp.codeAnalysis.exclude": {
+        "**/_build/**": true
+    },
+    "explorer.autoRevealExclude": {
+        "**/_build/**": true
+    },
+    "python.linting.ignorePatterns": [
+        "**/site-packages/**/*.py",
+        ".vscode/*.py",
+        "**/_build/**"
+    ],
+    "cmake.buildDirectory": "${workspaceFolder}/_build",
+    "cmake.buildTask": false,
+    "cmake.parallelJobs": 6,
+    "cmake.ctest.parallelJobs": 6,
+    "cmake.configureArgs": [
+        "-C  custom.cmake",
+        "-DOPENMP_LIBRARY_DIR=/home/maryewski/opt/openmmpol/lib"
+    ],
+    "fortran.fortls.notifyInit": true,
+    "gitlens.outputLevel": "debug",
+    "C_Cpp.loggingLevel": "Debug",
+    "fortran.fortls.path": "/home/maryewski/.local/bin/fortls",
+    "files.associations": {
+        "dftbplus.h": "c"
+    }
+}

@@ -110,6 +110,10 @@ function (dftbp_add_fypp_defines fyppflags)
     list(APPEND _fyppflags -DWITH_POISSON)
   endif()
 
+  if(WITH_OPENMMPOL)
+    list(APPEND _fyppflags -DWITH_OPENMMPOL)
+  endif()
+
   if(WITH_SDFTD3)
     list(APPEND _fyppflags -DWITH_SDFTD3)
   endif()

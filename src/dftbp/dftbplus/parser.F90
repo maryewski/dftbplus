@@ -49,6 +49,7 @@ module dftbp_dftbplus_parser
   use dftbp_elecsolvers_elecsolvers, only : electronicSolverTypes, providesEigenvalues
   use dftbp_extlibs_arpack, only : withArpack
   use dftbp_extlibs_elsiiface, only : withELSI, withPEXSI
+  use dftbp_extlibs_openmmpol, only : TOpenmmpolInput
   use dftbp_extlibs_plumed, only : withPlumed
   use dftbp_extlibs_poisson, only : withPoisson, TPoissonInfo, TPoissonStructure
   use dftbp_extlibs_sdftd3, only : TSDFTD3Input, dampingFunction
@@ -1461,7 +1462,8 @@ contains
     end select
 
     call parseChimes(node, ctrl%chimesRepInput)
-
+    call parseOpenmmpol(node, ctrl%openmmpolInput, geo%nAtom)
+    
     ! SCC
     call getChildValue(node, "SCC", ctrl%tSCC, .false.)
 
@@ -8303,6 +8305,93 @@ contains
     #:endif
 
   end subroutine parseChimes
+
+
+  !> Parses the openmmpol input node, if present
+  subroutine parseOpenmmpol(rootNode, openmmpolInput, nAtoms)
+    !> Node to search
+    type(fnode), pointer, intent(in) :: rootNode
+
+    !> Openmmpol input type instance
+    type(TOpenmmpolInput), allocatable, intent(out) :: openmmpolInput
+
+    !> Number of atoms in the QM zone
+    integer :: nAtoms
+
+    ! Temporary objects
+    type(fnode), pointer :: currentInputNode
+    character(:), allocatable :: characterBuffer
+    type(string) :: buffer
+    type(string), allocatable :: searchPath(:)
+
+    ! Test for existence of input node
+    call getChild(rootNode, "openmmpol", currentInputNode, requested=.false.)
+    if (.not. associated(currentInputNode)) return
+#:if WITH_OPENMMPOL
+    ! Get the real input node
+    call getChildValue(rootNode, "openmmpol", currentInputNode)
+    allocate(openmmpolInput)
+
+    ! Get basic options
+    call getNodeName2(currentInputNode, buffer)
+    allocate(openmmpolInput%inputFormat, source=char(buffer))
+    call getChildValue(currentInputNode, "Solver", openmmpolInput%solver, default=3)
+
+    ! Get search path for files
+    call getParamSearchPath(searchPath)
+
+    ! Read format specific options
+    select case (openmmpolInput%inputFormat)
+    case ("tinker")
+      ! Get geometry file
+      call getChildValue(currentInputNode, "GeometryFile", buffer)
+      ! characterBuffer = 
+      call findFile(searchPath, unquote(char(buffer)), openmmpolInput%mmGeomFilename)
+
+      if (.not. allocated(openmmpolInput%mmGeomFilename)) then
+         call error("Could not find openmmpol geometry input file (Tinker format): '" // unquote(char(buffer)) // "'")
+      end if
+
+      ! Get .prm/.key parameter file
+      call getChildValue(currentInputNode, "ParametersFile", buffer)
+      ! characterBuffer = 
+      call findFile(searchPath, unquote(char(buffer)), openmmpolInput%mmParamsFilename)
+
+      if (.not. allocated(openmmpolInput%mmParamsFilename)) then
+        call error("Could not find openmmpol force field parameters input file (Tinker format): '" // unquote(char(buffer)) // "'")
+      end if
+
+    case ("mmp")
+      call getChildValue(currentInputNode, "ParametersFile", buffer)
+      ! characterBuffer = 
+      call findFile(searchPath, unquote(char(buffer)), openmmpolInput%mmParamsFilename)
+
+      if (.not. allocated(openmmpolInput%mmParamsFilename)) then
+        call error("Could not find openmmpol force field parameters input file (mmp format): '" // unquote(char(buffer)) // "'")
+      end if
+      
+    case default
+      call error("Input file format for openmmpol is not recognized: '" // openmmpolInput%inputFormat //"'")
+    end select
+
+    ! If present, read QM vdW parameters
+    ! call getChild(currentInputNode, "vdWParameters", openmmpolVdWNode, requested=.false.)
+    call getChild(currentInputNode, "vdWParameters", currentInputNode, requested=.false.)
+    if (associated(currentInputNode)) then
+      allocate(openmmpolInput%qmAtomTypes(nAtoms))
+      call getChildValue(currentInputNode, "AtomTypes", openmmpolInput%qmAtomTypes)
+
+      call getChildValue(currentInputNode, "ParametersFile", buffer)
+      call findFile(searchPath, unquote(char(buffer)), openmmpolInput%qmParamsFilename)
+      if (.not. allocated(openmmpolInput%qmParamsFilename)) then
+       call error("Could not find openmmpol force field parameters input file (Tinker format): '" // unquote(char(buffer)) // "'")
+      end if
+    end if
+#:else  
+    call detailedError(currentInputNode, "openmmpol calculation requested, but DFTB+ was not compiled with openmmpol support.")
+#:endif
+
+  end subroutine parseOpenmmpol
 
 
   !> Returns parser version for a given input version or throws an error if not possible.

@@ -26,6 +26,25 @@ module dftbp_extlibs_openmmpol
   use dftbp_dftb_charges, only : getSummedCharges
   use dftbp_common_accuracy, only : dp, mc
 
-! TODO: rewrite openmmpol.F90 using external charge dependent potential provider
-  
+  public TOMMPInterface, TOMMPInterface_init
+
+  type :: TOpenmmpolInput
+    !> Used input format; allowed values:
+    !! "Tinker", "mmp"
+    character(:), allocatable :: inputFormat
+    !> Index of linear solver
+    integer :: solver
+    !> Path to MM geometry file
+    character(:), allocatable :: mmGeomFilename
+    !> Path to a separate parameter file, if present
+    character(:), allocatable :: mmParamsFilename
+    !> MM atom types for atoms in the QM zone;
+    !! used for vdW parameter access
+    integer, allocatable :: qmAtomTypes(:)
+    !> Path to parameter file containing MM atom
+    !! types for atoms in the QM zone
+    character(:), allocatable :: qmParamsFilename
+  end type
+
+
 end module

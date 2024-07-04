@@ -26,6 +26,7 @@ module dftbp_dftbplus_inputdata
   use dftbp_dftb_slakocont, only : TSlakoCont
   use dftbp_dftbplus_input_geoopt, only : TGeoOptInput
   use dftbp_elecsolvers_elecsolvers, only : TElectronicSolverInp
+  use dftbp_extlibs_openmmpol, only : TOpenmmpolInput
   use dftbp_extlibs_poisson, only : TPoissonInfo
   use dftbp_extlibs_tblite, only : TTBLiteInput
   use dftbp_io_message, only : error, warning
@@ -591,6 +592,9 @@ module dftbp_dftbplus_inputdata
 
     !> Whether ChIMES correction for repulsives should be applied.
     type(TChimesRepInp), allocatable :: chimesRepInput
+
+    !> openmmpol input data
+    type(TOpenmmpolInput), allocatable :: openmmpolInput
 
     !> File access type to use when opening binary files for reading and writing
     character(20) :: binaryAccessTypes(2)

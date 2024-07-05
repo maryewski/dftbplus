@@ -9,7 +9,7 @@
 module dftbp_dftbplus_qdepextpotproxy
   use dftbp_common_accuracy, only : dp
   use dftbp_dftb_shift, only : totalShift
-  use dftbp_dftbplus_qdepextpotgen, only : TQDepExtPotGen, TQDepExtPotGenWrapper
+  use dftbp_dftbplus_qdepextpotgen, only : TQDepExtPotGen, TQDepExtPotGenLLNode
   use dftbp_type_commontypes, only : TOrbitals
   implicit none
 
@@ -21,9 +21,10 @@ module dftbp_dftbplus_qdepextpotproxy
   type :: TQDepExtPotProxy
     private
     !> collection of external potentials
-    type(TQDepExtPotGenWrapper), allocatable :: generators(:)
+    type(TQDepExtPotGenLLNode), pointer :: generatorsEntryNode
     !> energy contributions to DFTB atoms due to potentials
     real(dp), allocatable :: energyAtom(:)
+    !> Total internal energy from all providers
     real(dp) :: energyInternal
   contains
     !> add potential contribution
@@ -40,15 +41,15 @@ module dftbp_dftbplus_qdepextpotproxy
 contains
 
   !> Initializes proxy for querying a collection of q-dependent external potential generators.
-  subroutine TQDepExtPotProxy_init(this, extPotGenerators)
+  subroutine TQDepExtPotProxy_init(this, entryNode)
 
     !> Instance.
     type(TQDepExtPotProxy), intent(out) :: this
 
     !> External potential generators to consider.
-    type(TQDepExtPotGenWrapper), intent(in) :: extPotGenerators(:)
+    type(TQDepExtPotGenLLNode), intent(in), pointer :: entryNode
 
-    this%generators = extPotGenerators
+    this%generatorsEntryNode => entryNode
 
   end subroutine TQDepExtPotProxy_init
 
@@ -74,10 +75,14 @@ contains
     !> Shell resolved potential to update.
     real(dp), intent(inout) :: potential(:,:,:,:)
 
+    !> Current potential generator
+    type(TQDepExtPotGenLLNode), pointer :: qmmmProviderCurrent
+
     real(dp), allocatable :: potAtom(:,:), potShell(:,:,:), potAtomTmp(:), potShellTmp(:,:)
     real(dp) :: energyInternalTmp
     integer :: mShell, nAtom, nSpin
-    integer :: iGen
+
+    qmmmProviderCurrent => this%generatorsEntryNode  
 
     mShell = size(deltaQShell, dim=1)
     nAtom = size(potential, dim=3)
@@ -93,8 +98,9 @@ contains
     end if
     this%energyAtom(:) = 0.0_dp
     this%energyInternal = 0.0_dp
-    do iGen = 1, size(this%generators)
-      call this%generators(iGen)%instance%getExternalPot(deltaQAtom, deltaQShell, potAtomTmp,&
+
+    do while (associated(qmmmProviderCurrent))
+      call qmmmProviderCurrent%instance%getExternalPot(deltaQAtom, deltaQShell, potAtomTmp,&
           & potShellTmp)
       
       ! Compute QM/MM interaction energy contribution
@@ -104,8 +110,8 @@ contains
       ! If Fock potential is screened, replace potential with the screened one
       ! before adding the potential that will be later used to compute the Fock
       ! matrix elements.
-      if (this%generators(iGen)%instance%hasScreenedFock) then
-        call this%generators(iGen)%instance%getExternalPotFock(deltaQAtom, deltaQShell, potAtomTmp,&
+      if (qmmmProviderCurrent%instance%hasScreenedFock) then
+        call qmmmProviderCurrent%instance%getExternalPotFock(deltaQAtom, deltaQShell, potAtomTmp,&
             & potShellTmp)
       end if
 
@@ -113,10 +119,12 @@ contains
       potShell(:,:,1) = potShell(:,:,1) + potShellTmp
 
       ! Add internal energy contributions if present
-      if (this%generators(iGen)%instance%hasInternalEnergy) then
-        call this%generators(iGen)%instance%getInternalEnergy(energyInternalTmp)
+      if (qmmmProviderCurrent%instance%hasInternalEnergy) then
+        call qmmmProviderCurrent%instance%getInternalEnergy(energyInternalTmp)
         this%energyInternal = this%energyInternal + energyInternalTmp
       end if
+
+      qmmmProviderCurrent => qmmmProviderCurrent%next
 
     end do
     call totalShift(potShell, potAtom, orb, species)
@@ -179,13 +187,18 @@ contains
     real(dp), intent(inout) :: gradients(:,:)
 
     real(dp), allocatable :: extPotGrad(:,:), deltaQAtomSpread(:,:)
-    integer :: iGen
+
+    type(TQDepExtPotGenLLNode), pointer :: qmmmProviderCurrent
+    qmmmProviderCurrent => this%generatorsEntryNode
 
     allocate(extPotGrad(size(gradients, dim=1), size(gradients, dim=2)))
     deltaQAtomSpread = spread(deltaQAtom, 1, 3)
-    do iGen = 1, size(this%generators)
-      call this%generators(iGen)%instance%getExternalPotGrad(deltaQAtom, deltaQShell, extPotGrad)
+
+    do while (associated(qmmmProviderCurrent))
+      call qmmmProviderCurrent%instance%getExternalPotGrad(deltaQAtom, deltaQShell, extPotGrad)
       gradients(:,:) = gradients + deltaQAtomSpread * extPotGrad
+
+      qmmmProviderCurrent => qmmmProviderCurrent%next
     end do
 
   end subroutine TQDepExtPotProxy_addGradientDc

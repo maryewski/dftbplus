@@ -11,7 +11,7 @@ module dftbp_dftbplus_qdepextpotgen
   implicit none
 
   private
-  public :: TQDepExtPotGen, TQDepExtPotGenWrapper
+  public :: TQDepExtPotGen, TQDepExtPotGenLLNode
 
   !> Base class for generating external population dependent potentials.
   !>
@@ -38,13 +38,19 @@ module dftbp_dftbplus_qdepextpotgen
   end type TQDepExtPotGen
 
 
-  !> Wrapper around TQDepExtPotGen to allow for building arrays.
-  type :: TQDepExtPotGenWrapper
+  !>  Linked list wrapper around external potential generator instance
+  type :: TQDepExtPotGenLLNode
 
     !> TQDepExtPotGen instance to wrap.
     class(TQDepExtPotGen), allocatable :: instance
 
-  end type TQDepExtPotGenWrapper
+    !> Index of LL node
+    integer :: index
+
+    !> Pointer to the next LL node
+    class(TQDepExtPotGenLLNode), pointer :: next => null()
+
+  end type TQDepExtPotGenLLNode
 
 
   abstract interface

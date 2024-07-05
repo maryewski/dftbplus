@@ -71,6 +71,7 @@ module dftbp_dftbplus_initprogram
   use dftbp_dftbplus_inputdata, only : TParallelOpts, TInputData, THybridXcInp, TControl, TBlacsOpts
   use dftbp_dftbplus_outputfiles, only : autotestTag, bandOut, derivEBandOut, hessianOut, mdOut,&
       & resultsTag, userOut, fCharges, fStopDriver, fStopSCC
+  use dftbp_dftbplus_qdepextpotgen, only : TQDepExtPotGenLLNode
   use dftbp_dftbplus_qdepextpotproxy, only : TQDepExtPotProxy
   use dftbp_dftbplus_transportio, only : readContactShifts
   use dftbp_elecsolvers_elecsolvers, only : TElectronicSolver, electronicSolverTypes,&
@@ -475,6 +476,9 @@ module dftbp_dftbplus_initprogram
     !> Is this a full QM/MM calculation, i.e.
     !! is internal MM energy present?
     logical :: tQMMM
+
+    !> QM/MM providers array;
+    type(TQDepExtPotGenLLNode), allocatable :: qmmmProviderEntryNode
 
     !> Output options for molecular dynamics data
     type(TMDOutput), allocatable :: mdOutput
@@ -1959,7 +1963,7 @@ contains
     this%tAppendGeo = input%ctrl%tAppendGeo
     this%isSccConvRequired = input%ctrl%isSccConvRequired
     this%tMD = input%ctrl%tMD
-    this%tQMMM = input%ctrl%tQMMM
+    this%tQMMM = input%ctrl%tQMMM     
     if (this%tMD) this%mdOutput = input%ctrl%mdOutput
     this%tDerivs = input%ctrl%tDerivs
     this%tPrintMulliken = input%ctrl%tPrintMulliken
@@ -2393,8 +2397,15 @@ contains
 
     ! Initiate all q-dependent potential generators here:
     if (allocated(input%ctrl%openmmpolInput)) then
+
+      ! Check if linked list exists
+      if (allocated(this%qmmmProviderEntryNode)) then
+      
+      else
+        ! if 
+      end if
         
-    end if
+    end if  
 
     ! Check if QM/MM is used: allocate q-dependent external potential controller;
     if (this%tQMMM) then

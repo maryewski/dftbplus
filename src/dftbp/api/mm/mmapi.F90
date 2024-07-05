@@ -24,7 +24,7 @@ module dftbp_mmapi
       & getStressTensor, getGradients, getEnergy, getCutOff, setQDepExtPotProxy,&
       & setExternalCharges, setGeometry, setNeighbourList, getRefCharges, setRefCharges
   use dftbp_dftbplus_parser, only : TParserFlags, rootTag, parseHsdTree, readHsdFile
-  use dftbp_dftbplus_qdepextpotgen, only : TQDepExtPotGen, TQDepExtPotGenWrapper
+  use dftbp_dftbplus_qdepextpotgen, only : TQDepExtPotGen, TQDepExtPotGenLLNode
   use dftbp_dftbplus_qdepextpotproxy, only : TQDepExtPotProxy, TQDepExtPotProxy_init
   use dftbp_extlibs_xmlf90, only : fnode, createDocumentNode, createElement, appendChild,&
       & destroyNode
@@ -570,7 +570,7 @@ contains
     !> Population dependant external potential generator
     class(TQDepExtPotGen), intent(in) :: extPotGen
 
-    type(TQDepExtPotGenWrapper) :: extPotGenWrapper
+    type(TQDepExtPotGenLLNode), pointer :: extPotProvider
     type(TQDepExtPotProxy) :: extPotProxy
 
     call this%checkInit()
@@ -581,8 +581,9 @@ contains
       end if
     end if
 
-    allocate(extPotGenWrapper%instance, source=extPotGen)
-    call TQDepExtPotProxy_init(extPotProxy, [extPotGenWrapper])
+    allocate(extPotProvider)
+    allocate(extPotProvider%instance, source=extPotGen)
+    call TQDepExtPotProxy_init(extPotProxy, extPotProvider)
     call setQDepExtPotProxy(this%main, extPotProxy)
 
   end subroutine TDftbPlus_setQDepExtPotGen

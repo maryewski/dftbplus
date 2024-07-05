@@ -58,9 +58,9 @@ module dftbp_extlibs_openmmpol
     procedure :: getInternalEnergy => TOpenmmpolPotGen_getInternalEnergy
     !> method for writing openmmpol-specific data
     procedure :: writeOutput => TOpenmmpolPotGen_writeOutput
+    ! TODO: add methods for controlling dynamics and excited states contributions
     !> method for updating coordinates in the QM zone
     ! procedure :: updateQMCoords => TOpenmmpolPotGen_updateQMCoords
-    ! TODO: add methods for controlling dynamics and excited states contributions
   end type
 
   !> Data type for storing openmmpol-specific input parameters
@@ -84,23 +84,12 @@ module dftbp_extlibs_openmmpol
 
 contains
 
-  subroutine TOpenmmpolPotGen_writeOutput(this)
-    class(TOpenmmpolPotGen) :: this
-
-#:if WITH_OPENMMPOL
-    call notImplementedError
-#:else
-    call notImplementedError
-#:endif
-  end subroutine TOpenmmpolPotGen_writeOutput
-
-
   subroutine TOpenmmpolPotGen_init(this, input)
     class(TOpenmmpolPotGen), intent(inout) :: this
     type(TOpenmmpolInput), intent(in) ::  input
     
 #:if WITH_OPENMMPOL
-    call ommp_print_summary_to_file(this%pSystem, "openmmpol.out")
+    call notImplementedError
 #:else
     call notImplementedError
 #:endif
@@ -126,6 +115,7 @@ contains
 
 #:if WITH_OPENMMPOL
     ! TODO: implement adding potential
+    call notImplementedError
 #:else
     call notImplementedError
 #:endif
@@ -193,8 +183,20 @@ contains
 #:endif
   end subroutine TOpenmmpolPotGen_getInternalEnergy
 
+
+  subroutine TOpenmmpolPotGen_writeOutput(this)
+    class(TOpenmmpolPotGen) :: this
+
+#:if WITH_OPENMMPOL
+    call ommp_print_summary_to_file(this%pSystem, "openmmpol.out")
+#:else
+    call notImplementedError
+#:endif
+  end subroutine TOpenmmpolPotGen_writeOutput
+
   
   subroutine notImplementedError
     call error("DFTB+ compiled without support for openmmpol library")
   end subroutine notImplementedError
+
 end module

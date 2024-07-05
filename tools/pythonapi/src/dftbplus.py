@@ -130,7 +130,7 @@ class DftbPlus:
                 atom (in atomic units). Shape: [natom, 3]. This parameter is
                 optional, you can pass None if you did not ask DFTB+ to
                 calculate forces.
-            extpotfock (2darray): screened Fock potential for each atom,
+            extpotfock (2darray): screened Fock potential for each atom,    
             if present. Shape: [natom]. Not necessary if real and Fock
             potential of a model are equal.
 

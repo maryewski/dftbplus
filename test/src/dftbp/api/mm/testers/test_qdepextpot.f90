@@ -56,7 +56,7 @@ contains
     real(dp) :: merminEnergy
     real(dp) :: gradients(3, nQmAtom), grossCharges(nQmAtom)
 
-    character(:), allocatable :: DftbVersion
+    character(:), allocatable :: DftbVersion  
     integer :: major, minor, patch
 
     !integer :: devNull

@@ -2398,12 +2398,9 @@ contains
     ! Initiate all q-dependent potential generators here:
     if (allocated(input%ctrl%openmmpolInput)) then
 
-      ! Check if linked list exists
-      if (allocated(this%qmmmProviderEntryNode)) then
-      
-      else
-        ! if 
-      end if
+      ! TODO: init generator
+
+      ! TODO: append generator
         
     end if  
 

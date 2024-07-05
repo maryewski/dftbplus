@@ -38,20 +38,18 @@ module dftbp_dftbplus_qdepextpotgen
   end type TQDepExtPotGen
 
 
-  !>  Linked list wrapper around external potential generator instance
+  !>  Linked list node wrapper around external potential generator instance
   type :: TQDepExtPotGenLLNode
 
     !> TQDepExtPotGen instance to wrap.
     class(TQDepExtPotGen), allocatable :: instance
 
-    !> Index of LL node
-    integer :: index
-
     !> Pointer to the next LL node
     class(TQDepExtPotGenLLNode), pointer :: next => null()
 
+  contains
+    procedure :: appendGenerator => TQDepExtPotGenLLNode_appendGenerator
   end type TQDepExtPotGenLLNode
-
 
   abstract interface
 
@@ -156,5 +154,37 @@ module dftbp_dftbplus_qdepextpotgen
 
   end interface
 
+contains
+  
+  !> Appends new element to the linked list;
+  !! in cases where linked list length is zero, it is initialized
+  !! by calling this routine
+  subroutine TQDepExtPotGenLLNode_appendGenerator(this, generator)
+    !> Instance
+    class(TQDepExtPotGenLLNode), intent(inout) :: this
+    !> Generator to add
+    class(TQDepExtPotGen), intent(in) :: generator
+
+    class(TQDepExtPotGenLLNode), pointer :: nextNode
+
+    ! If this is an uninitialized entry node,
+    ! initialize and return
+    if (.not. allocated(this%instance)) then
+      allocate(this%instance, source=generator)
+      return
+    end if
+
+    ! Traverse the linked list to find the last node
+    nextNode => this%next
+    do while (associated(nextNode))
+      nextNode => nextNode%next
+    end do
+    
+    ! Allocate object and bind it to a pointer    
+    allocate(nextNode)
+    allocate(nextNode%instance, source=generator)
+    this%next => nextNode
+
+  end subroutine TQDepExtPotGenLLNode_appendGenerator
 
 end module dftbp_dftbplus_qdepextpotgen

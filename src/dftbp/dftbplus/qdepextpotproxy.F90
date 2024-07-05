@@ -24,11 +24,14 @@ module dftbp_dftbplus_qdepextpotproxy
     type(TQDepExtPotGenWrapper), allocatable :: generators(:)
     !> energy contributions to DFTB atoms due to potentials
     real(dp), allocatable :: energyAtom(:)
+    real(dp) :: energyInternal
   contains
     !> add potential contribution
     procedure :: addPotential => TQDepExtPotProxy_addPotential
     !> add energy contribution
     procedure :: addEnergy => TQDepExtPotProxy_addEnergy
+    !> add internal energy contribtuion
+    procedure :: addEnergyInternal => TQDepExtPotProxy_addEnergyInternal
     !> add force contribution
     procedure :: addGradientDc => TQDepExtPotProxy_addGradientDc
   end type TQDepExtPotProxy
@@ -72,6 +75,7 @@ contains
     real(dp), intent(inout) :: potential(:,:,:,:)
 
     real(dp), allocatable :: potAtom(:,:), potShell(:,:,:), potAtomTmp(:), potShellTmp(:,:)
+    real(dp) :: energyInternalTmp
     integer :: mShell, nAtom, nSpin
     integer :: iGen
 
@@ -88,13 +92,32 @@ contains
       allocate(this%energyAtom(nAtom))
     end if
     this%energyAtom(:) = 0.0_dp
+    this%energyInternal = 0.0_dp
     do iGen = 1, size(this%generators)
       call this%generators(iGen)%instance%getExternalPot(deltaQAtom, deltaQShell, potAtomTmp,&
           & potShellTmp)
-      potAtom(:,1) = potAtom(:,1) + potAtomTmp
-      potShell(:,:,1) = potShell(:,:,1) + potShellTmp
+      
+      ! Compute QM/MM interaction energy contribution
       this%energyAtom(:) = this%energyAtom + deltaQAtom * potAtomTmp
       this%energyAtom(:) = this%energyAtom + sum(deltaQShell * potShellTmp, dim=1)
+
+      ! If Fock potential is screened, replace potential with the screened one
+      ! before adding the potential that will be later used to compute the Fock
+      ! matrix elements.
+      if (this%generators(iGen)%instance%hasScreenedFock) then
+        call this%generators(iGen)%instance%getExternalPotFock(deltaQAtom, deltaQShell, potAtomTmp,&
+            & potShellTmp)
+      end if
+
+      potAtom(:,1) = potAtom(:,1) + potAtomTmp
+      potShell(:,:,1) = potShell(:,:,1) + potShellTmp
+
+      ! Add internal energy contributions if present
+      if (this%generators(iGen)%instance%hasInternalEnergy) then
+        call this%generators(iGen)%instance%getInternalEnergy(energyInternalTmp)
+        this%energyInternal = this%energyInternal + energyInternalTmp
+      end if
+
     end do
     call totalShift(potShell, potAtom, orb, species)
     call totalShift(potential, potShell, orb, species)
@@ -104,7 +127,7 @@ contains
 
   !> Adds the energy contribution of the q-dependent external potentials.
   !>
-  !> Note: This should only called after the potential had been queried via the
+  !> Note: This should only be called after the potential had been queried via the
   !> addPotential() procedure.
   !>
   subroutine TQDepExtPotProxy_addEnergy(this, energies)
@@ -118,6 +141,22 @@ contains
     energies(:) = energies + this%energyAtom
 
   end subroutine TQDepExtPotProxy_addEnergy
+
+
+  !> Adds the internal MM contribution to the total QM/MM energy.
+  !!
+  !! Note: should only be called after calling addPotential().
+  subroutine TQDepExtPotProxy_addEnergyInternal(this, energy)
+
+    !> Instance.
+    class(TQDepExtPotProxy), intent(inout) :: this
+
+    !> Energy to add to
+    real(dp), intent(inout) :: energy
+
+    energy = energy + this%energyInternal
+
+  end subroutine TQDepExtPotProxy_addEnergyInternal
 
 
   !> Adds the "double counting" gradient contribution of the q-dependent external potentials.

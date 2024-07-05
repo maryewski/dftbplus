@@ -77,6 +77,10 @@ module dftbp_dftb_energytypes
     !> Solvation free energy
     real(dp) :: ESolv = 0.0_dp
 
+    !> Internal MM contribution to
+    !! the total QM/MM energy
+    real(dp) :: EinternalMM = 0.0_dp
+
     !> Excitation energy
     real(dp) :: Eexcited = 0.0_dp
 
@@ -223,6 +227,7 @@ contains
     this%EHalogenX = 0.0_dp
     this%E3rd = 0.0_dp
     this%ESolv = 0.0_dp
+    this%EinternalMM = 0.0_dp
     this%Etotal = 0.0_dp
     this%EMermin = 0.0_dp
     this%EGibbs = 0.0_dp

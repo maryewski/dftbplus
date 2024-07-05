@@ -32,8 +32,13 @@ module extchargepotgen
   contains
     !> method for evaluating external potential
     procedure :: getExternalPot => TExtChargePotGen_getExternalPot
+    !> method for evaluation ext Fock potential (in this case same
+    !! as the regular potential)
+    procedure :: getExternalPotFock => TExtChargePotGen_getExternalPot
     !> method for evaluating gradient of external potential
     procedure :: getExternalPotGrad => TExtChargePotGen_getExternalPotGrad
+    !> method for getting internal energy (always zero)
+    procedure :: getInternalEnergy => TExtChargePotGen_getInternalEnergy
   end type TExtChargePotGen
 
 contains
@@ -56,6 +61,8 @@ contains
     this%atomCoords = atomCoords
     this%extChargeCoords = extChargeCoords
     this%extCharges = extCharges
+    this%hasInternalEnergy = .false.
+    this%hasScreenedFock = .false.
     allocate(this%extPotGrad(3, size(atomCoords, dim=2)))
 
   end subroutine TExtChargePotGen_init
@@ -107,6 +114,19 @@ contains
     extPotGrad = this%extPotGrad
 
   end subroutine TExtChargePotGen_getExternalPotGrad
+
+
+  subroutine TExtChargePotGen_getInternalEnergy(this,  energyInternal)
+
+    !> instance
+    class(TExtChargePotGen), intent(inout) :: this
+
+    !> return value
+    real(dp), intent(out) ::  energyInternal
+
+    energyInternal = 0.0_dp
+    
+  end subroutine TExtChargePotGen_getInternalEnergy
 
 
 end module extchargepotgen

@@ -506,7 +506,7 @@ contains
 
 
   !> Sets an external potential.
-  subroutine TDftbPlus_setExternalPotential(this, atomPot, potGrad)
+  subroutine TDftbPlus_setExternalPotential(this, atomPot, potGrad, atomPotFock)
 
     !> Instance
     class(TDftbPlus), intent(inout) :: this
@@ -517,6 +517,9 @@ contains
     !> Gradient of the potential  on each atom. Shape: (3, nAtom)
     real(dp), intent(in), optional :: potGrad(:,:)
 
+    !> Screened Fock potential, if present
+    real(dp), intent(in), optional :: atomPotFock(:)
+
     call this%checkInit()
 
     if (allocated(this%main%solvation)) then
@@ -525,7 +528,7 @@ contains
       end if
     end if
 
-    call setExternalPotential(this%main, atomPot=atomPot, potGrad=potGrad)
+    call setExternalPotential(this%main, atomPot=atomPot, potGrad=potGrad, atomPotFock=atomPotFock)
 
   end subroutine TDftbPlus_setExternalPotential
 

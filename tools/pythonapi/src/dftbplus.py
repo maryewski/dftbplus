@@ -119,7 +119,7 @@ class DftbPlus:
             self._dftbpluslib.dftbp_set_coords(self._dftb_handler, coords)
 
 
-    def set_external_potential(self, extpot, extpotgrad=None):
+    def set_external_potential(self, extpot, extpotgrad=None, extpotfock=None):
         '''Sets up an external potential.
 
         Args:
@@ -130,6 +130,9 @@ class DftbPlus:
                 atom (in atomic units). Shape: [natom, 3]. This parameter is
                 optional, you can pass None if you did not ask DFTB+ to
                 calculate forces.
+            extpotfock (2darray): screened Fock potential for each atom,
+            if present. Shape: [natom]. Not necessary if real and Fock
+            potential of a model are equal.
 
         '''
 
@@ -137,7 +140,7 @@ class DftbPlus:
             extpotgrad = np.ctypeslib.as_ctypes(extpotgrad)
 
         self._dftbpluslib.dftbp_set_external_potential(
-            self._dftb_handler, extpot, extpotgrad)
+            self._dftb_handler, extpot, extpotgrad, extpotfock)
 
 
     def register_ext_pot_generator(self, refobj, calc_extpot, calc_extpotgrad):

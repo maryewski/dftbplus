@@ -77,6 +77,7 @@ module dftbp_dftbplus_initprogram
       & TElectronicSolver_init
   use dftbp_elecsolvers_elsisolver, only : TElsiSolver_init, TElsiSolver_final
   use dftbp_extlibs_arpack, only : withArpack
+  use dftbp_extlibs_openmmpol, only: TOpenmmpolInput, TOpenmmpolPotGen
   use dftbp_extlibs_elsiiface, only : withELSI
   use dftbp_extlibs_plumed, only : withPlumed, TPlumedCalc, TPlumedCalc_init
   use dftbp_extlibs_poisson, only : TPoissonInput
@@ -470,6 +471,10 @@ module dftbp_dftbplus_initprogram
 
     !> Is this a MD calculation?
     logical :: tMD
+
+    !> Is this a full QM/MM calculation, i.e.
+    !! is internal MM energy present?
+    logical :: tQMMM
 
     !> Output options for molecular dynamics data
     type(TMDOutput), allocatable :: mdOutput
@@ -1954,6 +1959,7 @@ contains
     this%tAppendGeo = input%ctrl%tAppendGeo
     this%isSccConvRequired = input%ctrl%isSccConvRequired
     this%tMD = input%ctrl%tMD
+    this%tQMMM = input%ctrl%tQMMM
     if (this%tMD) this%mdOutput = input%ctrl%mdOutput
     this%tDerivs = input%ctrl%tDerivs
     this%tPrintMulliken = input%ctrl%tPrintMulliken
@@ -2382,6 +2388,16 @@ contains
               & this%eFieldScaling%scaledExtEField(this%eField%EFieldStrength)
         end if
       end if
+
+    end if
+
+    ! Initiate all q-dependent potential generators here:
+    if (allocated(input%ctrl%openmmpolInput)) then
+        
+    end if
+
+    ! Check if QM/MM is used: allocate q-dependent external potential controller;
+    if (this%tQMMM) then
 
     end if
 

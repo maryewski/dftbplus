@@ -275,6 +275,9 @@ module dftbp_dftbplus_inputdata
     !> Molecular dynamics
     logical :: tMD = .false.
 
+    !> QM/MM
+    logical :: tQMMM = .false.
+
     !> Molecular dynamics data to be recorded as it is accumulated
     type(TMDOutput), allocatable :: mdOutput
 

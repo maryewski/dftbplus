@@ -13,7 +13,7 @@ module dftbp_dftbplus_qdepextpotgenc
   implicit none
   private
 
-  public :: getExtPotIfaceC, getExtPotGradIfaceC
+  public :: getExtPotIfaceC, getExtPotGradIfaceC, getExtPotFockIfaceC, getInternalEnergyIfaceC
   public :: TQDepExtPotGenC, TQDepExtPotGenC_init
 
   !> Interface to the routine which calculates the external potential due to charges
@@ -34,6 +34,22 @@ module dftbp_dftbplus_qdepextpotgenc
 
     end subroutine getExtPotIfaceC
 
+    !> Interface to set up screened Fock external potential
+
+    subroutine getExtPotFockIfaceC(refPtr, dQAtom, extPotAtom) bind(C)
+      import :: c_double, c_ptr
+
+      !> Reference pointer
+      type(c_ptr), value, intent(in) :: refPtr
+
+      !> Net number of electrons on each atom (note: positive number means electron excess)
+      real(c_double), intent(in)  :: dQAtom(*)
+
+      !> Potential on each atom (note: positive number means electron repulsion)
+      real(c_double), intent(out) :: extPotAtom(*)
+
+    end subroutine getExtPotFockIfaceC
+
 
     !> Interface to set up gradient of external potential
     subroutine getExtPotGradIfaceC(refPtr, dQAtom, extPotAtomGrad) bind(C)
@@ -50,19 +66,34 @@ module dftbp_dftbplus_qdepextpotgenc
 
     end subroutine getExtPotGradIfaceC
 
-  end interface
+    !> Interface to set up external potential
+    subroutine getInternalEnergyIfaceC(refPtr, energyInternal) bind(C)
+      import :: c_double, c_ptr
 
+      !> Reference pointer
+      type(c_ptr), value, intent(in) :: refPtr
+
+      !> Potential on each atom (note: positive number means electron repulsion)
+      real(c_double), intent(out) :: energyInternal
+
+    end subroutine getInternalEnergyIfaceC
+
+  end interface
 
   !> Builds on the charge dependent external interface type from dftbp_dftbplus_qdepextpotgen for
   !> the C API
   type, extends(TQDepExtPotGen) :: TQDepExtPotGenC
     private
-    type(c_ptr) :: refPtr
+    type(c_ptr) :: refPtr 
     procedure(getExtPotIfaceC), nopass, pointer :: getExtPot
     procedure(getExtPotGradIfaceC), nopass, pointer :: getExtPotGrad
+    procedure(getExtPotFockIfaceC), nopass, pointer :: getExtPotFock
+    procedure(getInternalEnergyIfaceC), nopass, pointer :: getIntEnergy
   contains
     procedure :: getExternalPot => TDepExtPotGenC_getExternalPot
     procedure :: getExternalPotGrad => TQDepExtPotGenC_getExternalPotGrad
+    procedure :: getExternalPotFock => TDepExtPotGenC_getExternalPotFock
+    procedure :: getInternalEnergy => TDepExtPotGenC_getInternalEnergy
   end type TQDepExtPotGenC
 
 
@@ -70,7 +101,8 @@ contains
 
 
   !> Initialise an external charge dependent external potential within this type
-  subroutine TQDepExtPotGenC_init(this, refPtr, extPotFunc, extPotGradFunc)
+  subroutine TQDepExtPotGenC_init(this, refPtr, extPotFunc, extPotGradFunc, extPotFockFunc,&
+        & getInternalEnergyFunc)
 
     !> Instance
     type(TQDepExtPotGenC), intent(out) :: this
@@ -84,8 +116,16 @@ contains
     !> Function for the gradient of the potential
     procedure(getExtPotGradIfaceC), pointer, intent(in) :: extPotGradFunc
 
+    !> Function for the gradient of the potential
+    procedure(getExtPotFockIfaceC), pointer, intent(in) :: extPotFockFunc
+
+    !> Function for getting internal energy
+    procedure(getInternalEnergyIfaceC), pointer, intent(in) :: getInternalEnergyFunc
+
     this%getExtPot => extPotFunc
     this%getExtPotGrad => extPotGradFunc
+    this%getExtPotFock => extPotFockFunc
+    this%getIntEnergy => getInternalEnergyFunc
     this%refPtr = refPtr
 
   end subroutine TQDepExtPotGenC_init
@@ -119,7 +159,6 @@ contains
   end subroutine TDepExtPotGenC_getExternalPot
 
 
-
   !> Extra routine for interfacing gradients from a charge dependent external potential
   subroutine TQDepExtPotGenC_getExternalPotGrad(this, chargePerAtom, chargePerShell, extPotGrad)
 
@@ -139,6 +178,44 @@ contains
     call this%getExtPotGrad(this%refPtr, chargePerAtom, extPotGrad)
 
   end subroutine TQDepExtPotGenC_getExternalPotGrad
+
+
+  !> Extra routine for interfacing screened Fock external potential
+  subroutine TDepExtPotGenC_getExternalPotFock(this, chargePerAtom, chargePerShell, extPotAtom, extPotShell)
+
+    !> Class instance.
+    class(TQDepExtPotGenC), intent(inout) :: this
+
+    !> Net number of electrons on the atom with respect to its reference configuration, the
+    !> neutral atom.  Shape: [nAtom].
+    real(dp), intent(in) :: chargePerAtom(:)
+
+    !> Shell-resolved net number of electrons. Shape: [mShell, nAtom].
+    real(dp), intent(in) :: chargePerShell(:,:)
+
+    !> Screened Fock external potential
+    real(dp), intent(out) :: extPotAtom(:)
+
+    !> Shell-resolved external potential contribution. Shape: [mShell, nAtom].
+    real(dp), intent(out) :: extPotShell(:,:)
+
+    call this%getExtPotFock(this%refPtr, chargePerAtom, extPotAtom)
+
+  end subroutine TDepExtPotGenC_getExternalPotFock
+
+
+  !> Extra routine for interfacing screened Fock external potential
+  subroutine TDepExtPotGenC_getInternalEnergy(this, energyInternal)
+
+    !> Class instance.
+    class(TQDepExtPotGenC), intent(inout) :: this
+
+    !> QM/MM internal energy
+    real(dp), intent(out) :: energyInternal
+
+    call this%getIntEnergy(this%refPtr, energyInternal)
+
+  end subroutine TDepExtPotGenC_getInternalEnergy
 
 
 end module dftbp_dftbplus_qdepextpotgenc

@@ -19,12 +19,22 @@ module dftbp_dftbplus_qdepextpotgen
   !> Additional attributes and methods can be added in order to ease the conversion between the
   !> external tool and DFTB+.
   !>
-  type, abstract :: TQDepExtPotGen
+  type, abstract ::   TQDepExtPotGen
+    !> specifies whether the generator has screened
+    !! Fock potential
+    logical :: hasScreenedFock = .false.
+    !> specifies whether the generator has internal
+    !! energy that should be added to the total energy
+    logical :: hasInternalEnergy = .false.
   contains
     !> get the external potential
     procedure(getExtPotIface), deferred :: getExternalPot
+    !> get the external screened potential for the Fock matrix
+    procedure(getExtPotFockIface), deferred :: getExternalPotFock
     !> get the gradient of the potential wrt DFTB atom positions
     procedure(getExtPotGradIface), deferred :: getExternalPotGrad
+    !> get internal energy of the model
+    procedure(getInternalEnergyIface), deferred :: getInternalEnergy
   end type TQDepExtPotGen
 
 
@@ -71,6 +81,34 @@ module dftbp_dftbplus_qdepextpotgen
     end subroutine getExtPotIface
 
 
+    !> Called in cases where the potential that enters the Fock matrix
+    !! differs from the electrostatic potential on the partial charges.
+    !! This happens, for example, in AMOEBA QM/MM scenario, where
+    !! the dipole-dipole interaction between polarizable MM atoms
+    !! is screened, therefore a new contribution to the Fock matrix
+    !! appears.
+    subroutine getExtPotFockIface(this, chargePerAtom, chargePerShell, extPotAtom, extPotShell)
+      import :: TQDepExtPotGen, dp
+
+      !> Instance.
+      class(TQDepExtPotGen), intent(inout) :: this
+
+      !> Net number of electrons on the atom with respect to its reference configuration, the
+      !> neutral atom.  Shape: [nAtom].
+      real(dp), intent(in) :: chargePerAtom(:)
+
+      !> Shell-resolved net number of electrons. Shape: [mShell, nAtom].
+      real(dp), intent(in) :: chargePerShell(:,:)
+
+      !> Atom dependent external potential contribution. Shape: [nAtom]
+      real(dp), intent(out) :: extPotAtom(:)
+
+      !> Shell-resolved external potential contribution. Shape: [mShell, nAtom].
+      real(dp), intent(out) :: extPotShell(:,:)
+
+    end subroutine getExtPotFockIface
+
+
     !> Called when DFTB needs the gradient of the external potential at the position of the atoms.
     !>
     !>
@@ -96,6 +134,19 @@ module dftbp_dftbplus_qdepextpotgen
       real(dp), intent(out) :: extPotGrad(:,:)
 
     end subroutine getExtPotGradIface
+
+
+    subroutine getInternalEnergyIface(this, energyInternal)
+      import :: TQDepExtPotGen, dp
+
+      !> Class instance.
+      class(TQDepExtPotGen), intent(inout) :: this
+
+      !> External energy contribution
+      real(dp), intent(out) :: energyInternal
+      
+    end subroutine getInternalEnergyIface
+
 
   end interface
 

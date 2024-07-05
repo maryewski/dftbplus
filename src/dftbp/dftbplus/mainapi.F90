@@ -377,7 +377,7 @@ contains
   !>
   !> Sign convention: charge of electron is considered to be positive.
   !>
-  subroutine setExternalPotential(main, atomPot, shellPot, potGrad)
+  subroutine setExternalPotential(main, atomPot, shellPot, potGrad, atomPotFock, shellPotFock)
 
     !> Instance
     type(TDftbPlusMain), intent(inout) :: main
@@ -391,23 +391,39 @@ contains
     !> Gradient of the electrostatic potential
     real(dp), intent(in), optional :: potGrad(:,:)
 
+    !> Atomic screned Fock potential
+    real(dp), intent(in), optional :: atomPotFock(:)
+
+    !> Shell-resolved Fock potential
+    real(dp), intent(in), optional :: shellPotFock(:,:)
+
     ! Using explicit allocation instead of F2003 automatic ones in order to stop eventual
     ! shape mismatches already at this point rather than later deep in the main code
-    if (present(atomPot)) then
+    if (present(atomPot) .or. present(atomPotFock)) then
       if (.not. allocated(main%refExtPot%atomPot)) then
         allocate(main%refExtPot%atomPot(main%nAtom, main%nSpin))
       end if
       @:ASSERT(all(shape(atomPot) == [main%nAtom]))
-      main%refExtPot%atomPot(:,1) = atomPot
+      if (present(atomPotFock)) then
+        main%refExtPot%atomPot(:,1) = atomPotFock
+      else
+        main%refExtPot%atomPot(:,1) = atomPot
+      end if
     end if
-    if (present(shellPot)) then
+
+    if (present(shellPot) .or. present(shellPotFock)) then
       if (.not. allocated(main%refExtPot%shellPot)) then
         allocate(main%refExtPot%shellPot(main%orb%mShell, main%nAtom,&
             & main%nSpin))
       end if
       @:ASSERT(all(shape(shellPot) == [main%orb%mShell, main%nAtom]))
-      main%refExtPot%shellPot(:,:,1) = shellPot
+      if (present(shellPotFock)) then
+        main%refExtPot%shellPot(:,:,1) = shellPotFock
+      else
+        main%refExtPot%shellPot(:,:,1) = shellPot
+      end if
     end if
+
     if (present(potGrad)) then
       if (.not. allocated(main%refExtPot%potGrad)) then
         allocate(main%refExtPot%potGrad(3, main%nAtom))
@@ -415,6 +431,7 @@ contains
       @:ASSERT(all(shape(potGrad) == [3, main%nAtom]))
       main%refExtPot%potGrad(:,:) = potGrad
     end if
+
     main%isExtField = .true.
 
     ! work around for lack (at the moment) for a flag to re-calculate ground state even if

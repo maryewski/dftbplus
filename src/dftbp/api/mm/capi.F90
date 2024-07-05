@@ -13,7 +13,8 @@ module dftbp_capi
   use dftbp_common_file, only : TFileDescr, openFile
   use dftbp_common_globalenv, only : instanceSafeBuild
   use dftbp_dftbplus_qdepextpotgenc, only :&
-      & getExtPotIfaceC, getExtPotGradIfaceC, TQDepExtPotGenC, TQDepExtPotGenC_init
+      & getExtPotIfaceC, getExtPotGradIfaceC, TQDepExtPotGenC, TQDepExtPotGenC_init,&
+      & getExtPotFockIfaceC, getInternalEnergyIfaceC
   use dftbp_mmapi, only : TDftbPlus, TDftbPlus_init, TDftbPlus_destruct, TDftbPlusInput,&
       & TDftbPlusAtomList
   use dftbp_type_linkedlist, only : TListString, append, init, destruct
@@ -215,7 +216,7 @@ end subroutine c_DftbPlusInput_final
 
 
   !> Set an external potential on the DFTB+ calculation
-  subroutine c_DftbPlus_setExternalPotential(handler, extPot, extPotGrad)&
+  subroutine c_DftbPlus_setExternalPotential(handler, extPot, extPotGrad, extPotFock)&
       & bind(C, name='dftbp_set_external_potential')
 
     !> Handler for the calculation
@@ -226,6 +227,9 @@ end subroutine c_DftbPlusInput_final
 
     !> Gradient of the potential wrt to atom positions
     type(c_ptr), value, intent(in) :: extPotGrad
+
+    !> Screened Fock potential
+    real(c_double), intent(in) :: extPotFock(*)
 
     type(TDftbPlusC), pointer :: instance
     real(c_double), pointer :: pExtPotGrad(:,:)
@@ -239,14 +243,15 @@ end subroutine c_DftbPlusInput_final
     else
       pExtPotGrad => null()
     end if
-    call instance%setExternalPotential(extPot(1:nAtom), pExtPotGrad)
+
+    call instance%setExternalPotential(extPot(1:nAtom), pExtPotGrad, extPotFock(1:nAtom))
 
   end subroutine c_DftbPlus_setExternalPotential
 
 
   !> Register a generator for an external potential
-  subroutine c_DftbPlus_registerExtPotGenerator(handler, refPtr, extPotFunc, extPotGradFunc)&
-      & bind(C, name='dftbp_register_ext_pot_generator')
+  subroutine c_DftbPlus_registerExtPotGenerator(handler, refPtr, extPotFunc, extPotGradFunc,&
+      & extPotFockFunc, internalEnergyFunc) bind(C, name='dftbp_register_ext_pot_generator')
 
     !> Handler for the potential
     type(c_DftbPlus), intent(inout) :: handler
@@ -260,15 +265,25 @@ end subroutine c_DftbPlusInput_final
     !> Function for the gradient of the potential
     type(c_funptr), value, intent(in) :: extPotGradFunc
 
+    !> Function for the screened Fock potential
+    type(c_funptr), value, intent(in) :: extPotFockFunc
+
+    !> Internal MM energy
+    type(c_funptr), value, intent(in) :: internalEnergyFunc
+
     type(TDftbPlusC), pointer :: instance
     type(TQDepExtPotGenC) :: extPotGenC
     procedure(getExtPotIfaceC), pointer :: pExtPotFunc
     procedure(getExtPotGradIfaceC), pointer :: pExtPotGradFunc
+    procedure(getExtPotFockIfaceC), pointer :: pExtPotFockFunc
+    procedure(getInternalEnergyIfaceC), pointer :: pInternalEnergyFunc
 
     call c_f_procpointer(extPotFunc, pExtPotFunc)
     call c_f_procpointer(extPotGradFunc, pExtPotGradFunc)
+    call c_f_procpointer(extPotFockFunc, pExtPotFockFunc)
     call c_f_pointer(handler%instance, instance)
-    call TQDepExtPotGenC_init(extPotGenC, refPtr, pExtPotFunc, pExtPotGradFunc)
+    call TQDepExtPotGenC_init(extPotGenC, refPtr, pExtPotFunc, pExtPotGradFunc, pExtPotFockFunc,&
+        & pInternalEnergyFunc)
     call instance%setQDepExtPotGen(extPotGenC)
 
   end subroutine c_DftbPlus_registerExtPotGenerator

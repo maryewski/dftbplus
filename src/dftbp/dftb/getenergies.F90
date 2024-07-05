@@ -209,6 +209,7 @@ contains
     end if
     if (allocated(qDepExtPot)) then
       call qDepExtPot%addEnergy(energy%atomExt)
+      call qDepExtPot%addEnergyInternal(energy%EinternalMM)
     end if
     energy%Eext = sum(energy%atomExt)
 

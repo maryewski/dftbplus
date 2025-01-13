@@ -75,6 +75,9 @@ TEST_OMP_THREADS:STRING=1
 //How to run the tests
 TEST_RUNNER_TEMPLATE:STRING=env OMP_NUM_THREADS=${TEST_OMP_THREADS}
 
+//Whether valgrind should be invoked when testing binaries
+TEST_WITH_VALGRIND:BOOL=OFF
+
 //Whether public API should be included and the DFTB+ library installed
 WITH_API:BOOL=ON
 
@@ -130,7 +133,7 @@ WITH_TRANSPORT:BOOL=OFF
 WITH_UNIT_TESTS:BOOL=OFF
 
 //No help, variable specified on the command line.
-openmmpol_DIR:UNINITIALIZED=/home/maryewski/opt/openmmpol/lib/openMMPol-1.0.1/
+openmmpol_DIR:UNINITIALIZED=/home/maryewski/opt/openmmpol/lib/cmake/openmmpol
 
 
 ########################
@@ -142,9 +145,9 @@ CMAKE_CACHEFILE_DIR:INTERNAL=/home/maryewski/Projects/dftbplus
 //Major version of cmake used to create the current loaded cache
 CMAKE_CACHE_MAJOR_VERSION:INTERNAL=3
 //Minor version of cmake used to create the current loaded cache
-CMAKE_CACHE_MINOR_VERSION:INTERNAL=29
+CMAKE_CACHE_MINOR_VERSION:INTERNAL=31
 //Patch version of cmake used to create the current loaded cache
-CMAKE_CACHE_PATCH_VERSION:INTERNAL=2
+CMAKE_CACHE_PATCH_VERSION:INTERNAL=1
 //Path to CMake executable.
 CMAKE_COMMAND:INTERNAL=/usr/bin/cmake
 //Path to cpack program executable.

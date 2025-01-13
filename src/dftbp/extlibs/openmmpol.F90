@@ -17,7 +17,8 @@ module dftbp_extlibs_openmmpol
       ommp_get_fixedelec_energy, ommp_get_polelec_energy, ommp_get_full_bnd_energy, &
       ommp_get_vdw_energy, ommp_qm_helper_init_vdw_prm, ommp_qm_helper_vdw_energy,&
       ommp_qm_helper_set_attype, ommp_qm_helper_vdw_energy, ommp_print_summary_to_file, &
-      OMMP_SOLVER_NONE, OMMP_FF_AMOEBA, OMMP_FF_WANG_AL, OMMP_FF_WANG_DL
+      ommp_ignore_duplicated_angle_prm, OMMP_SOLVER_NONE, OMMP_FF_AMOEBA, OMMP_FF_WANG_AL,&
+      OMMP_FF_WANG_DL
 
 #:endif
    use dftbp_io_message, only : error, warning
@@ -113,6 +114,9 @@ contains
       allocate(this%sitePotentialPolarizationFock(nQMatoms))
       this%sitePotentialPolarizationFock = 0.0_dp
 
+      ! Tinker compatibility by default
+      call ommp_ignore_duplicated_angle_prm()
+      
       select case (openmmpolInput%inputFormat)
        case ('Tinker')
          call ommp_init_xyz(this%pSystem, openmmpolInput%mmGeomFilename, openmmpolInput%mmParamsFilename)
@@ -125,6 +129,7 @@ contains
       ! TODO: add verbosity control
       call ommp_set_verbose(OMMP_VERBOSE_DEBUG)
       ! call ommp_set_verbose(OMMP_VERBOSE_LOW)
+      
 
       allocate(chargesDummy(nQMatoms))
       allocate(atomNumbersVector(nQMatoms))

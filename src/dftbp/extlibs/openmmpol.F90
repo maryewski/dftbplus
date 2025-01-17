@@ -10,15 +10,15 @@
 module dftbp_extlibs_openmmpol
 
 #:if WITH_OPENMMPOL
-   use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_init_xyz, ommp_terminate, ommp_print_summary, &
-      ommp_prepare_qm_ele_ene, ommp_set_external_field, ommp_potential_mmpol2ext, &
-      ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper, ommp_set_verbose, &
-      ommp_get_full_ele_energy, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH, &
-      ommp_get_fixedelec_energy, ommp_get_polelec_energy, ommp_get_full_bnd_energy, &
-      ommp_get_vdw_energy, ommp_qm_helper_init_vdw_prm, ommp_qm_helper_vdw_energy,&
-      ommp_qm_helper_set_attype, ommp_qm_helper_vdw_energy, ommp_print_summary_to_file, &
-      ommp_ignore_duplicated_angle_prm, OMMP_SOLVER_NONE, OMMP_FF_AMOEBA, OMMP_FF_WANG_AL,&
-      OMMP_FF_WANG_DL
+   use ommp_interface, only : ommp_system, ommp_init_mmp, ommp_init_xyz, ommp_terminate,&
+      ommp_print_summary, ommp_prepare_qm_ele_ene, ommp_set_external_field,&
+      ommp_potential_mmpol2ext, ommp_qm_helper, ommp_init_qm_helper, ommp_terminate_qm_helper,&
+      ommp_set_verbose, ommp_get_full_ele_energy, ommp_get_fixedelec_energy,&
+      ommp_get_polelec_energy, ommp_get_full_bnd_energy, ommp_get_vdw_energy,&
+      ommp_qm_helper_init_vdw_prm, ommp_qm_helper_vdw_energy, ommp_qm_helper_set_attype,&
+      ommp_qm_helper_vdw_energy, ommp_print_summary_to_file, ommp_ignore_duplicated_angle_prm,&
+      ommp_ignore_duplicated_opb_prm, OMMP_SOLVER_NONE, OMMP_FF_AMOEBA, OMMP_FF_WANG_AL,&
+      OMMP_FF_WANG_DL, OMMP_VERBOSE_DEBUG, OMMP_VERBOSE_LOW, OMMP_VERBOSE_HIGH
 
 #:endif
    use dftbp_io_message, only : error, warning
@@ -115,6 +115,7 @@ contains
       this%sitePotentialPolarizationFock = 0.0_dp
 
       ! Tinker compatibility by default
+      call ommp_ignore_duplicated_opb_prm()
       call ommp_ignore_duplicated_angle_prm()
       
       select case (openmmpolInput%inputFormat)

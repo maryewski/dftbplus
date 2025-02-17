@@ -41,6 +41,8 @@ option(WITH_SDFTD3 "Whether the s-dftd3 library should be included" FALSE)
 
 option(WITH_MBD "Whether DFTB+ should be built with many-body-dispersion support" FALSE)
 
+option(WITH_OPENMMPOL "Whether DFTB+ should be built with polarizable QM/MM support through openmmpol" FALSE)
+
 option(WITH_PLUMED "Whether metadynamics via the PLUMED2 library should be allowed for" FALSE)
 
 option(WITH_CHIMES "Whether repulsive corrections via the ChIMES library should be enabled" FALSE)
